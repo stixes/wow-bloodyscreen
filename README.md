@@ -75,7 +75,15 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Disable in battlegrounds | on | new: no splatters inside battlegrounds and arenas. The energy bar and combo beads stay. |
 
 Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
-`/bs debug`, `/bs trace` (log combo sources and events, saved on `/reload`).
+`/bs debug` (diagnostics, and re-runs the game check below), `/bs trace` (log
+combo sources and events, saved on `/reload`).
+
+After a game update the addon checks, at login, that the game still gives it
+what it needs. If something broke, it switches off only that part (energy
+bar, combo points, crit splatters or the settings panel) and says so in one
+chat line, once per game build or addon update. When everything works it
+says nothing. A rogue or cat druid on Automatic whose combo points can't be
+read gets crit splatters instead.
 
 ## How it behaves (as the original)
 
@@ -229,7 +237,20 @@ Chat can't be copied, so the diagnostics are written to the saved variables:
 
 - `/bs debug` prints the combo point read, crit counters, energy bar state and
   whether the two per-frame scripts are running or idle (`idle: splatters=…
-  bar=…`), and saves them under `debug`.
+  bar=…`), and saves them under `debug`. It also re-runs the self-check
+  (lines starting `check `) and switches parts off or back on to match.
+- The **self-check** runs at every login and saves its result under
+  `selfcheck`: `build` (game version and build number from `GetBuildInfo()`,
+  e.g. `1.60.1.12345`), `version` (the addon's TOC version), `announced` (parts
+  already named in chat on this build and version), a dated header, then one
+  `key: status values` line per check: `class`, `power type`, `bar write`
+  (the power value handed to the bar, as during play), `power` (max and value,
+  `secret` when hidden), `combo` (`GetComboPoints` on the target, with
+  `UnitPower` as the fallback), `settings`, `auto` (the trigger in effect) and
+  `crit flag` (set on the first hit on the target). `ok` is fine, `unknown`
+  means nothing to judge (nil at login, e.g. no target), `off` means that part
+  is switched off: the call threw, the value is a secret addons can't read, or
+  the API is missing with no fallback.
 - `/bs trace` toggles a log of every combo point source and event, saved under
   `trace`, up to 1,000 lines.
 - The user runs `/reload` to write the file, then (with permission) read the
@@ -285,7 +306,9 @@ the workflow upload a second time.
 Actions tab). When CurseForge lists a newer "WoW Forever" version than the
 TOC's Interface, `tools/forever-patch.sh` bumps `## Interface` and the patch
 version and adds a changelog line, and the workflow opens a PR. Test in game,
-check the patch notes for API changes, merge, then tag as above. PRs opened by
+check the patch notes for API changes, merge, then tag as above. After the
+first login on the new build, `/reload` and read `selfcheck` in the saved
+variables: every line should be `ok` (or `unknown` for nil-at-login reads). PRs opened by
 the workflow don't trigger CI on their own; the tag's release run tests
 before uploading. Locally: `envchain curseforge tools/forever-patch.sh --check`.
 
