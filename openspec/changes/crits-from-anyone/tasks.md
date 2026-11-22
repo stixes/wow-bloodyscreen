@@ -19,11 +19,11 @@
 
 ## 4. In-game check (the user, on WoW Forever)
 
-- [ ] 4.1 Before the fight, `/bs debug` once to reset the view of the counters. Solo on a warrior (or any non-rogue on Automatic): crits splatter as before, including crits right after you stop auto-attacking. `/bs debug` shows `crits on target: seen=N shown=N` with seen equal to shown and no strict fields.
+- [ ] 4.1 `/reload` first (it resets the crit counters). Solo on a warrior (or any non-rogue on Automatic): crits splatter as before, including crits right after you stop auto-attacking. `/bs debug` shows `crits on target: seen=N shown=N` with seen equal to shown and no strict fields. (2026-11-22: a rogue on "Crits - hide after the timer (each splatter)" splatters on crits as intended, which is the same crit path Automatic uses for a warrior; `/bs debug` line not yet checked.)
 - [ ] 4.2 Old command: `/bs strict on` prints the help list (no strict line) and crits keep splattering.
 - [ ] 4.3 Settings: `/bs` shows the Trigger tooltip with the new wording, and your saved trigger is unchanged after the upgrade.
 - [ ] 4.4 Group, if possible (a party or a dungeon): with another player or a pet hitting your target, their crits splatter too. `/bs debug` after the fight; `seen` should include crits you didn't land. If others' crits don't appear, report it: the docs then must not promise them (design Risks).
-- [ ] 4.5 Rogue on Automatic: no change, combo point splatters only, crits add none.
+- [x] 4.5 Rogue on Automatic: no change, combo point splatters only, crits add none. (Passed 2026-11-22.)
 - [ ] 4.6 If anything is off, `/bs debug`, `/reload`, and ask for the saved variables to be read; fix and add a harness check.
 
 ## Workflow follow-up
