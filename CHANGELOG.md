@@ -3,6 +3,14 @@
 Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown.
 
+## 0.19.0
+
+Your target is taking a beating, and your screen shows it.
+
+* Crit splatters now come from **every critical hit your target takes**, whoever landed it: you, your pet or your group. The game doesn't tell addons who hit, so instead of guessing, every crit counts. In big groups the crit triggers will often show the maximum number of splatters; lower *Maximal number of splatters* if that's too much.
+* The hidden `/bs strict` filter, which tried to keep only your own crits by timing, is gone. Your saved settings update on their own, and your chosen trigger is kept.
+* Rogues and druids in cat form on Automatic see no change: their splatters follow combo points.
+
 ## 0.18.1
 
 A small follow-up to 0.18.0, no gameplay changes.
