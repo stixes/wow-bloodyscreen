@@ -40,7 +40,9 @@ tools/gen_drops.py                    regenerate the bead textures
 tools/package.sh                      build the release zip (dist/)
 tools/release.sh                      upload to CurseForge (run by the release workflow)
 tools/forever-patch.sh                bump the TOC for a new Forever version
-tools/hooks/                          Claude Code hooks: lint on edit, tests before commit
+tools/hooks/                          Claude Code hooks: lint on edit, tests before commit, release-tag checks
+tools/check-openspec-archived.sh      release gate: no open OpenSpec changes
+.claude/agents/release-reviewer.md    clean-context pre-release review agent
 .luacheckrc                           luacheck config (WoW globals)
 tests/harness.lua                     stubbed-API test harness
 .github/workflows/                    CI, release on tag, Forever patch watch
@@ -55,11 +57,11 @@ CurseForge.
 
 ## Settings (`/bs`, or Esc > Options > AddOns > Bloody Screen)
 
-Two sections, **Blood splatters** and **Energy bar**. The splatter settings are the original's, plus *Avoid the centre*:
+Two sections, **Blood splatters** and **Energy bar**. The splatter settings are the original's, plus *Automatic* and *Avoid the centre*:
 
 | setting | default | notes |
 |---|---|---|
-| Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits – hide when combat ends / Crits – timer (each splatter) / Crits – timer (shared). The original defaulted to crits. |
+| Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits - hide when combat ends / Crits - hide after the timer (each splatter) / Crits - hide after the timer (shared). The original defaulted to crits. |
 | Hide the splatters after | 5 s | crit timer triggers. The original: 10 s. |
 | Maximal number of splatters | 10 | |
 | Splatter size | 266 px | the original's 266 px × scale 1 |
@@ -98,6 +100,10 @@ Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
   On a switch (new), the old set fades out and the new target's set fades in
   when its count arrives. Points gained on a hit, which do fire a power event,
   appear instantly. The baubles use the same count.
+- **Automatic (new).** Worked out per character: combo points for a rogue or
+  a druid in cat form, otherwise *Crits - hide after the timer (each splatter)*.
+  It is worked out again on login, on entering the world and when a druid
+  changes form; when the result changes, the splatters on screen are cleared.
 - **Crits – hide when combat ends.** Each crit adds a slot up to `max`. Extra
   crits are ignored. Everything fades when you leave combat.
 - **Crits – timer.** Each crit re-places the next slot in rotation. With *each
@@ -172,7 +178,8 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
   Read it only when the user asks.
 - **CurseForge:** project **1822467** ("Bloody Screen Forever"), version type
   "WoW Forever" (slug `wow-forever`), game version 1.60.1 (id 17053). 0.17.0 was
-  uploaded by hand as a beta on 2026-11-22 and approved the same day.
+  uploaded by hand as a beta on 2026-11-22 and approved the same day; later
+  versions go out through the release workflow (see "Releasing").
 
 ### Dev loop
 
@@ -193,6 +200,9 @@ started inside this repo):
   syntax check and luacheck, and feeds the findings back to Claude.
 - Before every `git commit`, `tools/hooks/pre-commit-tests.sh` runs the syntax
   check, luacheck and the harness, and blocks the commit if any fails.
+- Before creating or pushing a `v*` tag, `tools/hooks/pre-release-tag.sh`
+  blocks it while an OpenSpec change is open or the release review record is
+  missing (see "Releasing").
 
 Both need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
 CI runs the same lint and harness.
@@ -277,7 +287,8 @@ Claude Code skills are installed machine-wide, so the repo only carries
   which merges the change's delta specs into `openspec/specs/`.
 - Releasing is not part of a change: a release can bundle several changes and
   happens only when the user asks (see "Releasing" above).
-- `openspec/specs/` starts empty and grows one archived change at a time.
+- `openspec/specs/` started empty (the first specs came from
+  multiclass-support) and grows one archived change at a time.
   Don't backfill specs for code that isn't changing.
 - CI runs `openspec validate --all --strict`.
 
@@ -306,7 +317,9 @@ Claude Code skills are installed machine-wide, so the repo only carries
 
 ## Status
 
-v0.17.0, on CurseForge (approved 2026-11-22). Tested in the live client,
-including the CurseForge install. The stubbed-API harness (`luajit tests/harness.lua
+The current version is on CurseForge (project 1822467, "Bloody Screen
+Forever") and in [GitHub releases](https://github.com/stixes/wow-bloodyscreen/releases/latest).
+Tested in the live client on a rogue and a warrior; druid support has not been
+tested in game yet. The stubbed-API harness (`luajit tests/harness.lua
 BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
 the drawing area, the energy bar and the target-switch logic.

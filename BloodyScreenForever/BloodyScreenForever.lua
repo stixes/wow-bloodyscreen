@@ -4,9 +4,10 @@
 -- the original's format: red on white, ten pre-faded steps per shape.
 --
 -- Kept from the original: fixed texture slots (slot i always uses shape
--- (i % 5) + 1), 266 px x scale, random rotation, a centred drawing area
--- (default 500x500) that splatters are placed inside, MOD blending, a 0.5 s fade
--- through the ten pre-faded files, and the four triggers with their rules.
+-- (i % 5) + 1), 266 px x scale, random rotation, a centred drawing area that
+-- splatters are placed inside (the original's 500x500; here 80% x 80% of the
+-- screen), MOD blending, a 0.5 s fade through the ten pre-faded files, and the
+-- four original triggers with their rules, plus Automatic.
 --
 -- Changed because the API is gone on Midnight/Forever:
 --   Combo points: UNIT_COMBO_POINTS is gone; GetComboPoints("player", "target")
@@ -37,7 +38,7 @@ local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
 -- The original's four triggers (BS_BloodBehaviour 1-4), plus "auto" (new):
 -- combo points for classes that have them, crits for everyone else.
 ns.MODES = {
-    { "auto",       "Automatic - combo points for rogues, crits for others" },
+    { "auto",       "Automatic - combo points for rogues and cat druids, crits for others" },
     { "combo",      "Combo points" },
     { "crit",       "Crits - hide when combat ends" },
     { "crittimed",  "Crits - hide after the timer (each splatter)" },
@@ -61,7 +62,7 @@ ns.DEFAULTS = {
     barY        = -140,  -- its offset from screen centre, px
     barAlphaCombat = 0.40, -- energy bar opacity in combat
     barAlphaIdle   = 0.15, -- and out of combat
-    barHideFull    = true, -- hide the bar out of combat when power is full (and no combo points)
+    barHideFull    = true, -- hide the bar out of combat when power is at rest (full, or empty for rage) and no combo points
     strict      = true,  -- crit attribution heuristic, see header
 }
 

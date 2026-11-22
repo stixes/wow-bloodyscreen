@@ -3,6 +3,13 @@
 Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown.
 
+## 0.18.1
+
+A small follow-up to 0.18.0, no gameplay changes.
+
+* The Trigger dropdown now says that Automatic gives combo points to druids in cat form too: "Automatic - combo points for rogues and cat druids, crits for others".
+* Documentation brought up to date with 0.18.0. Druid support is still untested in game.
+
 ## 0.18.0
 
 Multiclass support: warriors and druids join the rogues.
