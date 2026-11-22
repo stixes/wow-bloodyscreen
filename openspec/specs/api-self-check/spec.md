@@ -82,7 +82,7 @@ Each switched-off part SHALL be announced at most once per game build and addon 
 - **THEN** one line names that part
 
 ### Requirement: Crit flag is checked on the first hit on the target
-The addon SHALL check whether the critical-hit flag is readable on every combat event on the player's target, whatever trigger is in effect. The first time in a session it is hidden from addons, crit splatters SHALL be off for the session; while a crit trigger is in effect the player SHALL be told in one line, at most once per game build.
+The addon SHALL check whether the critical-hit flag is readable on every combat event on the player's target, whatever trigger is in effect. A crit whose flag is hidden from addons SHALL add no splatter. The first time in a session the flag is hidden, it SHALL be recorded, and while a crit trigger is in effect the player SHALL be told in one line, at most once per game build and addon version. Crits whose flag is readable SHALL keep splattering.
 
 #### Scenario: Crit flag readable
 - **WHEN** the player's target takes its first hit of the session and the crit flag is readable

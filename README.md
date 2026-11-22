@@ -69,12 +69,12 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Maximal number of splatters | 10 | |
 | Splatter size | 266 px | the original's 266 px × scale 1 |
 | Drawing area width / height | 80% × 80% | centred, in % of the screen. The original: two draggable corners, 500 × 500 px. |
-| Energy bar | on | new, see below |
-| Energy bar position | −140 px | below screen centre |
+| Show energy bar | on | new, see below |
+| Position (energy bar) | −140 px | below screen centre |
 | Energy bar opacity in / out of combat | 40% / 15% | also applies to the combo points |
 | Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. |
 | Avoid the centre | off | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
-| Disable in raids | off | new: no splatters inside raid instances (any trigger, combo points too). A raid group out in the world doesn't count. The energy bar and combo beads stay. |
+| Disable in raids | off | new: no splatters inside raid instances (any trigger, combo points too). A raid group out in the world doesn't count. The energy bar and combo beads stay. Not tried inside a raid yet. |
 | Disable in battlegrounds | on | new: no splatters inside battlegrounds and arenas. The energy bar and combo beads stay. |
 
 Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
@@ -86,7 +86,8 @@ what it needs. If something broke, it switches off only that part (energy
 bar, combo points, crit splatters or the settings panel) and says so in one
 chat line, once per game build or addon update. When everything works it
 says nothing. A rogue or cat druid on Automatic whose combo points can't be
-read gets crit splatters instead.
+read gets crit splatters instead. `/bs debug` re-runs the check and can switch
+a part back on (the settings panel needs a `/reload`).
 
 ## How it behaves (as the original)
 
@@ -146,7 +147,7 @@ on a target switch. The row shows only for rogues and druids in cat form,
 decided by class: the client may report a combo point maximum for other
 classes too.
 
-On Midnight/Forever your main resource is a **secret value** in combat: addons
+On Midnight/Forever your main resource is a **secret value**, even out of combat: addons
 can display it but can't compare it or do maths with it. The bar passes
 `UnitPower` and `UnitPowerMax` straight to the status bar (`SetMinMaxValues` and
 `SetValue` accept secrets), and the number goes in through `string.format`. If
@@ -170,7 +171,8 @@ working.
   tell hits from target switches. Every read is secret-guarded.
 - **Not ported (yet):** damage-based scaling, the "also on white crits" toggle,
   the range check, and the PvP/PvE toggles (both defaulted to on, which means no
-  filtering). The original's minimal scaling factor existed only for damage
+  filtering; *Disable in raids* and *Disable in battlegrounds* now cover part of
+  this). The original's minimal scaling factor existed only for damage
   scaling.
 
 ## Textures
@@ -216,8 +218,9 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
    fallback list, and to the overlay too if the generated list lacks it (Lua
    tables from Blizzard's UI such as `Settings`, constants). An unknown name is
    usually a typo.
-3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every line
-   should be `PASS`. It stubs the WoW API, including secret values, which error
+3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every check
+   line should be `PASS` (it also prints some debug output, and exits non-zero
+   on any FAIL). It stubs the WoW API, including secret values, which error
    on any maths or comparison. Add checks for new behaviour: automate
    everything the harness can see (logic, text, settings, migrations, slash
    commands), so the in-game list stays as short as possible.
@@ -240,7 +243,7 @@ started inside this repo):
   blocks it while an OpenSpec change is open or the release review record is
   missing (see "Releasing").
 
-Both need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
+All three need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
 CI runs the same lint (always with the generated list) and harness, plus
 `tools/check-api-typos.sh`: `tests/api-typos.lua` holds deliberate typos that
 luacheck must all report, so a missing or broken list can't pass.
@@ -382,6 +385,7 @@ Claude Code skills are installed machine-wide, so the repo only carries
 The current version is on CurseForge (project 1822467, "Bloody Screen
 Forever") and in [GitHub releases](https://github.com/stixes/wow-bloodyscreen/releases/latest).
 Tested in the live client on a rogue and a warrior; druid support has not been
-tested in game yet. The stubbed-API harness (`luajit tests/harness.lua
+tested in game yet, and neither has *Disable in raids* inside a raid (its
+instance detection was checked in a battleground). The stubbed-API harness (`luajit tests/harness.lua
 BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
 the drawing area, the energy bar and the target-switch logic.

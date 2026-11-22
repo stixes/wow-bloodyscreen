@@ -836,7 +836,9 @@ SelfCheck = function(announce)
 end
 
 -- Every UNIT_COMBAT on the target: the first readable flag marks the check ok,
--- the first one hidden from addons switches crit splatters off for the session.
+-- the first one hidden from addons is recorded and announced. Hidden crits are
+-- skipped one by one in OnUnitCombat; readable ones keep counting (the flag may
+-- be hidden only in some situations, which isn't measured).
 NoteCritFlag = function(flagText)
     if not db or flagText == nil or ns.critFlag == "off" then return end
     if Readable(flagText) then
