@@ -92,9 +92,9 @@ number on it. Opacity is 40% in combat and 15% out of combat (two sliders).
 Under it is a row of round combo point baubles shaded like beads of blood
 (deep red, dark rim, specular highlight): one per possible combo point (5, or
 more with talents), red as you gain them and dark otherwise (own art,
-`tools/gen_drops.py`). Combo points belong to the player
-on modern clients, so this is your current count, effectively the count on the
-mob you're hitting. The row is hidden for classes without combo points.
+`tools/gen_drops.py`). They show the points on your current target, from the
+same `GetComboPoints("player", "target")` read as the splatters, so they update
+on a target switch. The row is hidden for classes without combo points.
 
 On Midnight/Forever your main resource is a **secret value** in combat: addons
 can display it but can't compare it or do maths with it. The bar passes
@@ -128,19 +128,81 @@ All textures are new, made by the scripts in `tools/`. The splatters use the
 original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 256×256 RLE TGA, red on white, drawn with `MOD` blending.
 
-## Releasing (CurseForge project 1822467)
+## Working on this project (for future sessions)
+
+### Where things are
+
+- **Repo:** `~/projects/personal/wow-bloodyscreen`. Local git repo on `main`,
+  **no remote**. Commit freely as changes are done. Commit with the personal
+  git identity.
+- **Game install (Wine):**
+  `<WoW>/_forever_/`.
+  `Interface/AddOns/BloodyScreenForever` is a **symlink** to this repo's
+  `BloodyScreenForever/`, so edits are live in the game.
+- **Saved variables:**
+  `_forever_/WTF/Account/<account>/SavedVariables/BloodyScreenForever.lua`. It's
+  outside the home, so read it only when the user asks.
+- **CurseForge:** project **1822467** ("Bloody Screen Forever"), WoW Forever
+  game version 1.60.1, game version id 17053. 0.17.0 was uploaded as a beta on
+  2026-11-22, by hand, and was pending moderation.
+
+### Dev loop
+
+1. Edit `BloodyScreenForever/*.lua`.
+2. Check syntax: `for f in BloodyScreenForever/*.lua; do luajit -bl $f >/dev/null; done`.
+3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every line
+   should be `PASS`. It stubs the WoW API, including secret values, which error
+   on any maths or comparison. Add checks for new behaviour.
+4. In game, the user runs `/reload` for Lua or TOC changes. **New texture
+   files need a full game restart**; files that were only changed are picked
+   up by `/reload`.
+5. Commit, bumping `## Version` in the TOC for anything user-visible.
+
+### Getting data out of the game
+
+Chat can't be copied, so the diagnostics are written to the saved variables:
+
+- `/bs debug` prints the combo point read, crit counters and energy bar state,
+  and saves them under `debug`.
+- `/bs trace` toggles a log of every combo point source and event, saved under
+  `trace`, up to 1,000 lines.
+- The user runs `/reload` to write the file, then (with permission) read the
+  saved variables file above.
+
+### Releasing
 
 1. Bump `## Version` in the TOC (and `## Interface` after a Forever patch).
-2. Add a `## <version>` section to `CHANGELOG.md`, then commit.
-3. `envchain curseforge tools/release.sh beta` (or `alpha` / `release`).
-   Add `--dry-run` to check everything without uploading.
+2. Add a `## <version>` section to `CHANGELOG.md` (Markdown; it becomes the
+   CurseForge changelog), then commit.
+3. Dry run first: `envchain curseforge tools/release.sh beta --dry-run`. Then
+   release: `envchain curseforge tools/release.sh beta` (or `alpha` /
+   `release`). The user has allowed releasing through the API.
 
 The script refuses to run with uncommitted changes, a version that's already
-tagged, or a missing changelog section. It builds the zip from committed files,
-finds CurseForge's game version for the TOC's Interface (16001 → 1.60.1),
-uploads through the CurseForge upload API and tags `v<version>`. The token is
-`API_TOKEN` in the `curseforge` envchain namespace (`CF_API_TOKEN` also works). It goes to curl through
-stdin and never appears on the command line.
+tagged, or a missing changelog section. It builds the zip from committed files
+(`tools/package.sh`, `git archive`), finds CurseForge's game version for the
+TOC's Interface (16001 → 1.60.1), uploads through the CurseForge upload API
+(`https://wow.curseforge.com/api/projects/1822467/upload-file`) and tags
+`v<version>`. The token is `API_TOKEN` in the `curseforge` envchain namespace
+(`CF_API_TOKEN` also works). It reaches curl through stdin, never on the
+command line. Never print it. New files then wait for CurseForge moderation
+(minutes to about three workdays).
+
+### Rules and gotchas
+
+- **No Feador/Resike art in the repo or the zip.** It has no licence. All
+  textures come from `tools/gen_splatters.py` and `tools/gen_drops.py`.
+- **Forever API facts** (measured on build 16001):
+  - The player's primary power (energy) is **secret even out of combat**.
+    `UnitPowerMax` isn't.
+  - Combo points follow the target. Read `GetComboPoints("player", "target")`,
+    not `UnitPower(…, ComboPoints)`. After a target switch the real count
+    arrives about 1 s later with no event.
+  - `InCombatLockdown()` is still `false` while `PLAYER_REGEN_DISABLED` is
+    being handled, so track combat from the events themselves.
+  - The combat log is closed to addons. Crits come from `UNIT_COMBAT`.
+- The user prefers **few settings** and **faithfulness to the original** before
+  adding features.
 
 ## Credits and licence
 
@@ -151,7 +213,8 @@ stdin and never appears on the command line.
 
 ## Status
 
-v0.17.0. Tested in the live client (combo point trigger, energy bar, beads,
-hide when full). The stubbed-API harness (`luajit tests/harness.lua
+v0.17.0. The combo point trigger, energy bar, beads and hide when full were
+tested in the live client on earlier versions. The new splatter art in 0.17.0
+has not yet been seen in game. The stubbed-API harness (`luajit tests/harness.lua
 BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
 the drawing area, the energy bar and the target-switch logic.
