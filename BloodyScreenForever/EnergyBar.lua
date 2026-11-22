@@ -34,6 +34,9 @@ local POLL = 0.05          -- s between combo point reads
 local QUIET = 3.0          -- s without a power change, out of combat, that counts as full
                            -- (longer than vanilla's 2 s energy tick)
 local lastPowerChange = 0  -- GetTime() of the last power event (or combat end)
+local settleStart = -1     -- GetTime() of the last target switch or loading screen
+local awake = false        -- poll attached? It detaches when nothing is left to settle
+local Wake
 
 local function Readable(v)
     if v == nil then return false end
@@ -153,6 +156,8 @@ function ns.BarDebug()
     end
     local pt, tok = UnitPowerType("player")
     return {
+        ("idle: splatters=%s bar=%s"):format(ns.SplattersAwake and ns.SplattersAwake() and "running" or "idle",
+            awake and "running" or "idle"),
         ("bar: shown=%s alpha=%.2f inCombat=%s InCombatLockdown=%s UnitAffectingCombat=%s"):format(
             tostring(bar and bar:IsShown()), bar and bar:GetAlpha() or -1, tostring(inCombat),
             tostring(InCombatLockdown()), V(UnitAffectingCombat, "player")),
@@ -171,6 +176,7 @@ function ns.ApplyBar()
     bar:ClearAllPoints()
     bar:SetPoint("CENTER", UIParent, "CENTER", 0, ns.db.barY)
     bar:SetShown(ns.db.bar)
+    Wake()
     UpdateAlpha()
     if ns.db.bar then UpdateType() end
 end
@@ -203,17 +209,20 @@ function ns.SetupBar()
     baubleRow:SetSize(1, BAUBLE_H)
 
     bar:SetScript("OnEvent", function(_, event, _unit, token)
+        Wake() -- none of the bar's events fire while it is truly idle
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
             inCombat = (event == "PLAYER_REGEN_DISABLED")
             lastPowerChange = GetTime() -- the quiet period starts when combat ends
             UpdateAlpha()
         elseif event == "PLAYER_TARGET_CHANGED" then
+            settleStart = GetTime()
             -- combo points follow the target on Forever; no power event fires on a switch
             UpdateCombo()
             C_Timer.After(0, UpdateCombo)
         elseif event == "UNIT_DISPLAYPOWER" or event == "PLAYER_ENTERING_WORLD" then
             lastPowerChange = GetTime()
             if event == "PLAYER_ENTERING_WORLD" then
+                settleStart = GetTime() -- the combo count can arrive late here too
                 inCombat = UnitAffectingCombat("player") and true or false
                 UpdateAlpha()
             end
@@ -226,8 +235,18 @@ function ns.SetupBar()
         end
     end)
     -- combo points are also polled: on Forever a target switch mid-combat
-    -- updates the count with no (or a late) event
-    bar:SetScript("OnUpdate", function(_, elapsed)
+    -- updates the count with no (or a late) event. The poll detaches itself
+    -- once nothing is left to settle (see Busy), and any bar event or setting
+    -- change reattaches it.
+    local function Busy(now)
+        -- the 3 s "at rest" test has not run past QUIET yet
+        if not inCombat and now - lastPowerChange < QUIET then return true end
+        -- combo characters: points can change with no event in combat, while
+        -- some are shown, and just after a target switch
+        return baubleRow:IsShown()
+            and (inCombat or (lastCur or 0) > 0 or now - settleStart < (ns.COMBO_SETTLE or 3))
+    end
+    local function BarUpdate(_, elapsed)
         pollElapsed = pollElapsed + elapsed
         if pollElapsed >= POLL then
             pollElapsed = 0
@@ -235,8 +254,18 @@ function ns.SetupBar()
             -- at full power no power events arrive, and right after combat the
             -- value may still be secret for a moment: re-check "full" here
             if not inCombat then UpdateAlpha() end
+            if not Busy(GetTime()) then
+                awake = false
+                bar:SetScript("OnUpdate", nil)
+            end
         end
-    end)
+    end
+    Wake = function()
+        if not awake then
+            awake = true
+            bar:SetScript("OnUpdate", BarUpdate)
+        end
+    end
     bar:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
     bar:RegisterUnitEvent("UNIT_MAXPOWER", "player")
     bar:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")

@@ -81,8 +81,11 @@ assert(loadfile(dir.."/BloodyScreenForever.lua"))("BloodyScreenForever", ns)
 assert(loadfile(dir.."/EnergyBar.lua"))("BloodyScreenForever", ns)
 assert(loadfile(dir.."/Options.lua"))("BloodyScreenForever", ns)
 local function fire(e,...) scripts.OnEvent(nil,e,...) end
-local function run(sec) for _=1,math.floor(sec/0.02) do now=now+0.02; local q = nextFrame; nextFrame = {}; for _,fn in ipairs(q) do fn() end; scripts.OnUpdate(); if barState.onUpdate then barState.onUpdate(nil, 0.02) end end end
 local function vis() local n=0 for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then n=n+1 end end return n end
+local idleViolations = 0 -- frames that ended with a splatter on screen but no splatter OnUpdate attached
+local function run(sec) for _=1,math.floor(sec/0.02) do now=now+0.02; local q = nextFrame; nextFrame = {}; for _,fn in ipairs(q) do fn() end
+  if scripts.OnUpdate then scripts.OnUpdate() end; if barState.onUpdate then barState.onUpdate(nil, 0.02) end
+  if vis() > 0 and scripts.OnUpdate == nil then idleViolations = idleViolations + 1 end end end
 local function shapes() local s={} for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then s[#s+1]=t.path:match("Splatter(%d_%d+)") end end return table.concat(s,",") end
 local function cp(n) power=n; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.02) end
 local function crit() fire("UNIT_COMBAT","target","WOUND","CRITICAL",1234,1) end
@@ -356,6 +359,8 @@ BloodyScreenForeverDB = { mode="critshared", strict=true, max=6, version=9 }
 fire("ADDON_LOADED","BloodyScreenForever")
 check("migration 9 -> 10: strict dropped, trigger and max kept",
     ns.db.version == 10 and ns.db.strict == nil and ns.db.mode == "critshared" and ns.db.max == 6)
+
+check("never idle with a splatter on screen: "..idleViolations.." violations", idleViolations == 0)
 
 if failures > 0 then
     print(("%d check(s) failed"):format(failures))

@@ -11,7 +11,10 @@
 --
 -- Changed because the API is gone on Midnight/Forever:
 --   Combo points: UNIT_COMBO_POINTS is gone; GetComboPoints("player", "target")
---   is polled, with UNIT_POWER_UPDATE telling hits from target switches.
+--   is polled (while a splatter is shown, in combat, or just after a target
+--   switch), with UNIT_POWER_UPDATE telling hits from target switches.
+--   Idle costs nothing: the per-frame script detaches itself when there is
+--   nothing to draw or wait for, and reattaches when work appears.
 --   Crits: the combat log is closed to addons, so crits come from UNIT_COMBAT
 --   ("target", "WOUND", "CRITICAL"). It carries no source, so the original's
 --   sourceGUID == player check can't be made: every crit your target takes
@@ -31,6 +34,7 @@ local MAX_OVERLAP = 0.10   -- splatters overlap by at most this share of the sma
 local BLOOD_RADIUS = 0.75  -- the blood fills roughly this share of a texture's half-size
 local PLACE_TRIES = 60
 local PlaceSplatter
+local Wake, Sleep -- attach / detach the per-frame script (defined with it below)
 
 local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
 
@@ -106,6 +110,11 @@ local previewUntil = 0
 local warnedSecret = false
 local stats = { crits = 0, counted = 0, secretFlag = 0, outOfCombat = 0 }
 local inCombat = false  -- from the REGEN events: InCombatLockdown() lags behind them
+-- s after a target switch (or a loading screen) in which the combo count is
+-- still polled out of combat: the new target's count arrives ~1 s late, with
+-- no event (measured in combat, build 16001). Shared with EnergyBar.lua.
+ns.COMBO_SETTLE = 3
+local settleStart = -1  -- GetTime() of the last target switch or loading screen
 
 -- BS_TextureFrame: the drawing area.
 local area = CreateFrame("Frame", "BloodyScreenForeverFrame", UIParent)
@@ -241,6 +250,7 @@ local function ShowSlot(i, fadeIn)
     s.tex:SetPoint("CENTER", area, "CENTER", x, y)
     s.x, s.y, s.size = x, y, size
     s.tex:Show()
+    Wake()
 end
 
 local function StartFade(i)
@@ -266,6 +276,7 @@ local function DetachAll()
             HideSlot(s)
         end
     end
+    if #ghosts > 0 then Wake() end
 end
 
 local function FadeAll()
@@ -281,6 +292,7 @@ local function ClearNow()
         ghosts[i] = nil
     end
     critCount, lastShown, globalTimer, previewUntil = 0, -1, 0, 0
+    Wake() -- one pass, then idle if nothing is due
 end
 
 -- Drawing area size; also hides slots above `max`.
@@ -307,11 +319,44 @@ end
 ---------------------------------------------------------------------------
 -- Per-frame rules (BS_Textures_OnUpdate)
 ---------------------------------------------------------------------------
-area:SetScript("OnUpdate", function()
-    if not db then return end
+-- Either combat signal: the REGEN flag, or UnitAffectingCombat (which is
+-- already true after a /reload mid-fight, when no REGEN event follows).
+local function InCombat()
+    if inCombat then return true end
+    local uac = UnitAffectingCombat("player")
+    return Readable(uac) and uac and true or false
+end
+
+-- Anything left to draw or wait for after this frame's pass? Reads no power
+-- value: timestamps, flags and texture visibility only.
+local function Busy(now)
+    if previewUntil > 0 or #ghosts > 0 or globalTimer > 0 then return true end
+    for _, s in pairs(slots) do
+        if s.tex:IsShown() then return true end -- covers fades, fade-ins and crit timers
+    end
+    -- combo points can change with no event in combat and just after a switch
+    return mode == "combo" and (InCombat() or now - settleStart < ns.COMBO_SETTLE)
+end
+
+local AreaUpdate
+local awake = false
+Wake = function()
+    if not awake then
+        awake = true
+        area:SetScript("OnUpdate", AreaUpdate)
+    end
+end
+Sleep = function()
+    awake = false
+    area:SetScript("OnUpdate", nil)
+end
+function ns.SplattersAwake() return awake end
+
+AreaUpdate = function()
+    if not db then Sleep() return end
     local now = GetTime()
     if previewUntil > 0 then
-        if now < previewUntil then return end
+        if now < previewUntil then return end -- stays awake: the preview is pending
         previewUntil = 0
         FadeAll()
     elseif mode == "combo" then
@@ -370,7 +415,8 @@ area:SetScript("OnUpdate", function()
             end
         end
     end
-end)
+    if not Busy(now) then Sleep() end
+end
 
 ---------------------------------------------------------------------------
 -- Triggers (BS_OnEvent)
@@ -474,7 +520,8 @@ function handlers.ADDON_LOADED(name)
 end
 
 function handlers.PLAYER_ENTERING_WORLD()
-    ns.ApplyLayout() -- screen size is final here (also resolves "auto")
+    settleStart = GetTime() -- combo counts can arrive late after a loading screen too
+    ns.ApplyLayout() -- screen size is final here (also resolves "auto"); wakes via ClearNow
 end
 
 function handlers.UNIT_POWER_UPDATE(_unit, token)
@@ -485,9 +532,13 @@ function handlers.UNIT_POWER_UPDATE(_unit, token)
 end
 
 function handlers.UNIT_COMBAT(...) OnUnitCombat(...) end
-function handlers.PLAYER_REGEN_DISABLED() inCombat = true end
+function handlers.PLAYER_REGEN_DISABLED() inCombat = true; Wake() end
 function handlers.PLAYER_REGEN_ENABLED() inCombat = false end
-function handlers.PLAYER_TARGET_CHANGED() OnTargetChanged() end
+function handlers.PLAYER_TARGET_CHANGED()
+    settleStart = GetTime()
+    Wake()
+    OnTargetChanged()
+end
 
 area:SetScript("OnEvent", function(_, event, ...)
     local h = handlers[event]

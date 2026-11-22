@@ -2,20 +2,20 @@
 
 ## 1. Harness first (so the existing behaviour is pinned before the code moves)
 
-- [ ] 1.1 `tests/harness.lua` `run()`: call `scripts.OnUpdate()` only when it is non-nil (the bar call is already guarded); verify `luajit tests/harness.lua BloodyScreenForever` is still all PASS on the unchanged addon
-- [ ] 1.2 Add the invariant to `run()`: on every simulated frame, if `vis() > 0` then `scripts.OnUpdate ~= nil`; count violations and report one check near the end ("never idle with a splatter on screen: 0 violations"); verify it PASSes on the unchanged addon (the script is always attached today)
+- [x] 1.1 `tests/harness.lua` `run()`: call `scripts.OnUpdate()` only when it is non-nil (the bar call is already guarded); verify `luajit tests/harness.lua BloodyScreenForever` is still all PASS on the unchanged addon
+- [x] 1.2 Add the invariant to `run()`: on every simulated frame, if `vis() > 0` then `scripts.OnUpdate ~= nil`; count violations and report one check near the end ("never idle with a splatter on screen: 0 violations"); verify it PASSes on the unchanged addon (the script is always attached today)
 
 ## 2. Splatter script (BloodyScreenForever.lua)
 
-- [ ] 2.1 Add `ns.COMBO_SETTLE = 3` (the only value to change if the in-game trace in 6.1 measures a slower late count; s after a target switch in which the late combo count is still polled, design decision 4) and an `InCombat()` helper: `inCombat` or a `Readable()` true `UnitAffectingCombat("player")`; and a local `settleStart`, set in `handlers.PLAYER_TARGET_CHANGED` and `handlers.PLAYER_ENTERING_WORLD` (separate from `lastTargetSwitch`, which drives the crossfade; design decision 4); verify luacheck clean
-- [ ] 2.2 Move the `OnUpdate` body into a local `AreaUpdate` that uses the `area` upvalue, add `awake`, `Wake()` and `Sleep()` (design decision 1), forward-declared near the top (like `PlaceSplatter`) because `ShowSlot`, `DetachAll` and `ClearNow` are defined above the handler; don't attach at creation; `if not db then Sleep() return end`; at the end of a full pass, `Sleep()` when the busy predicate (design decision 2) is false; verify the harness's existing checks all PASS with unchanged expectations
-- [ ] 2.3 Wake in `ShowSlot`, `DetachAll`, `ClearNow`, `handlers.PLAYER_TARGET_CHANGED`, `handlers.PLAYER_ENTERING_WORLD` and `handlers.PLAYER_REGEN_DISABLED`, not in the generic event dispatcher (design decision 5); verify the invariant from 1.2 still reports 0 violations and every existing check PASSes
-- [ ] 2.4 Update the header comment ("polled" → polled while a splatter is shown, in combat or just after a target switch); verify by reading it
+- [x] 2.1 Add `ns.COMBO_SETTLE = 3` (the only value to change if the in-game trace in 6.1 measures a slower late count; s after a target switch in which the late combo count is still polled, design decision 4) and an `InCombat()` helper: `inCombat` or a `Readable()` true `UnitAffectingCombat("player")`; and a local `settleStart`, set in `handlers.PLAYER_TARGET_CHANGED` and `handlers.PLAYER_ENTERING_WORLD` (separate from `lastTargetSwitch`, which drives the crossfade; design decision 4); verify luacheck clean
+- [x] 2.2 Move the `OnUpdate` body into a local `AreaUpdate` that uses the `area` upvalue, add `awake`, `Wake()` and `Sleep()` (design decision 1), forward-declared near the top (like `PlaceSplatter`) because `ShowSlot`, `DetachAll` and `ClearNow` are defined above the handler; don't attach at creation; `if not db then Sleep() return end`; at the end of a full pass, `Sleep()` when the busy predicate (design decision 2) is false; verify the harness's existing checks all PASS with unchanged expectations
+- [x] 2.3 Wake in `ShowSlot`, `DetachAll`, `ClearNow`, `handlers.PLAYER_TARGET_CHANGED`, `handlers.PLAYER_ENTERING_WORLD` and `handlers.PLAYER_REGEN_DISABLED`, not in the generic event dispatcher (design decision 5); verify the invariant from 1.2 still reports 0 violations and every existing check PASSes
+- [x] 2.4 Update the header comment ("polled" → polled while a splatter is shown, in combat or just after a target switch); verify by reading it
 
 ## 3. Energy bar poll (EnergyBar.lua)
 
-- [ ] 3.1 Add a local `settleStart`, set in the `PLAYER_TARGET_CHANGED` and `PLAYER_ENTERING_WORLD` branches; move the `OnUpdate` body into a local `BarUpdate` using the `bar` upvalue, with `awake`/`Wake()`/`Sleep()`; after each 0.05 s poll tick, `Sleep()` when the bar busy predicate (design decision 2) is false, using `ns.COMBO_SETTLE`; verify luacheck clean and all existing bar checks PASS unchanged (hideFull, quiet period, beads, crossfade, late count)
-- [ ] 3.2 Wake at the top of the bar's `OnEvent` and in `ns.ApplyBar`; export the bar's `awake` through `ns.BarDebug` (or a small `ns.BarAwake()`); verify existing checks PASS
+- [x] 3.1 Add a local `settleStart`, set in the `PLAYER_TARGET_CHANGED` and `PLAYER_ENTERING_WORLD` branches; move the `OnUpdate` body into a local `BarUpdate` using the `bar` upvalue, with `awake`/`Wake()`/`Sleep()`; after each 0.05 s poll tick, `Sleep()` when the bar busy predicate (design decision 2) is false, using `ns.COMBO_SETTLE`; verify luacheck clean and all existing bar checks PASS unchanged (hideFull, quiet period, beads, crossfade, late count)
+- [x] 3.2 Wake at the top of the bar's `OnEvent` and in `ns.ApplyBar`; export the bar's `awake` through `ns.BarDebug` (or a small `ns.BarAwake()`); verify existing checks PASS
 
 ## 4. `/bs debug` line and docs
 
