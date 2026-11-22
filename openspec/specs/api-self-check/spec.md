@@ -2,7 +2,7 @@
 
 ## Purpose
 
-At every login the addon checks that the game still gives it what it relies on, so a WoW Forever patch that breaks something is caught on the first login: it switches off only the parts that can't work, tells the player once per game build in a single short line, and keeps the results so the owner can read them.
+At every login the addon checks that the game still gives it what it relies on, so a WoW Forever patch that breaks something is caught on the first login: it switches off only the parts that can't work, tells the player once per game build and addon version in a single short line, and keeps the results so the owner can read them.
 
 ## Requirements
 

@@ -4,7 +4,7 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
-## Unreleased
+## 0.19.0
 
 Your target is taking a beating, and your screen shows it.
 
