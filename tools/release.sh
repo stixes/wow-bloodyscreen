@@ -44,7 +44,8 @@ notes=$(awk -v v="$version" '
     on {print}' CHANGELOG.md | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
 [[ -n "$notes" ]] || die "CHANGELOG.md has no '## $version' section"
 
-zip=$(tools/package.sh | head -n1)
+pkg=$(tools/package.sh)       # no "| head": with pipefail that SIGPIPEs (exit 141)
+zip=${pkg%%$'\n'*}
 [[ -f "$zip" ]] || die "packaging failed"
 
 echo "release:  Bloody Screen Forever $version ($type)"
