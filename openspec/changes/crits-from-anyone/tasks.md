@@ -31,8 +31,8 @@ Automated where the harness can see it; manual only for what needs the real game
 - [x] 4.3 Automated: the Trigger tooltip has the new wording (harness "Trigger tooltip: crits from anyone"); the saved trigger survives the upgrade (harness "migration 9 -> 10")
 - [x] 4.4 Manual, group (a party or a dungeon, or a pet hitting your target): their crits on your target splatter too. `/reload` before, `/bs debug` after the fight; `seen` should include crits you didn't land. If others' crits don't appear, report it: the docs then must not promise them (design Risks). (Passed 2026-11-22 without a group: targeting another player's mob splattered on their crits.)
 - [x] 4.5 Manual: rogue on Automatic: no change, combo point splatters only, crits add none. (Passed 2026-11-22.)
-- [ ] 4.7 Manual: out of combat, target a mob another player is fighting (Trigger "Crits - hide after the timer (each splatter)"): no splatters. Then pull a mob yourself: crits splatter, including your opening hit if it crits.
-- [ ] 4.6 If anything is off, `/bs debug`, `/reload`, and ask for the saved variables to be read; fix and add a harness check.
+- [x] 4.7 Manual: out of combat, target a mob another player is fighting (Trigger "Crits - hide after the timer (each splatter)"): no splatters. Then pull a mob yourself: crits splatter, including your opening hit if it crits. (Passed 2026-11-22.)
+- [x] 4.6 If anything is off, `/bs debug`, `/reload`, and ask for the saved variables to be read; fix and add a harness check. (Nothing was off: 4.1, 4.4, 4.5 and 4.7 passed in game.)
 
 ## Workflow follow-up
 
