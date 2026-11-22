@@ -4,6 +4,7 @@
 ## Author: stixes
 ## Version: 0.17.0
 ## SavedVariables: BloodyScreenForeverDB
+## X-Curse-Project-ID: 1822467
 ## IconTexture: Interface\AddOns\BloodyScreenForever\Textures\Drops\drop_full
 
 BloodyScreenForever.lua
