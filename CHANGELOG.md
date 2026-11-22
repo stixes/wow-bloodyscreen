@@ -4,9 +4,9 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
-## 0.19.0
+## 0.19.1
 
-Your target is taking a beating, and your screen shows it.
+Your target is taking a beating, and your screen shows it. (0.19.0 was never published, so everything below is new since 0.18.1.)
 
 * Crit splatters now come from **every critical hit your target takes** while you're in combat, whoever landed it: you, your pet or your group. Watching someone else's fight adds nothing. The game doesn't tell addons who hit, so instead of guessing, every crit counts. In big groups the crit triggers will often show the maximum number of splatters; lower *Maximal number of splatters* if that's too much.
 * The hidden `/bs strict` filter, which tried to keep only your own crits by timing, is gone. Your saved settings update on their own, and your chosen trigger is kept.
@@ -16,6 +16,10 @@ Your target is taking a beating, and your screen shows it.
 * **Splatters are now off in battlegrounds and arenas for everyone after this update.** To keep them, untick *Disable in battlegrounds* in Esc > Options > AddOns > Bloody Screen, *Blood splatters* section.
 * After a game update the addon checks, at login, that the game still gives it what it relies on. If something broke, it switches off only that part (energy bar, combo points, crit splatters or the settings panel) and says so in one short chat line, once per game build or addon update, instead of failing silently or with Lua errors. When everything works it says nothing. `/bs debug` re-runs the check.
 * If a game update hides combo points from addons, rogues and druids in cat form on Automatic get crit splatters instead of none.
+
+## 0.19.0
+
+Tagged but never published: the upload to CurseForge failed on a release script bug. Its changes shipped in 0.19.1.
 
 ## 0.18.1
 
