@@ -21,8 +21,10 @@ BloodyScreenForever/          <- symlinked into _forever_/Interface/AddOns/
 tools/gen_splatters.py                regenerate the splatter textures
 tools/gen_drops.py                    regenerate the bead textures
 tools/package.sh                      build the release zip (dist/)
-tools/release.sh                      release to CurseForge via its API
+tools/release.sh                      upload to CurseForge (run by the release workflow)
+tools/forever-patch.sh                bump the TOC for a new Forever version
 tests/harness.lua                     stubbed-API test harness
+.github/workflows/                    CI, release on tag, Forever patch watch
 ```
 
 ## Install
@@ -132,20 +134,23 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 
 ### Where things are
 
-- **Repo:** `~/projects/personal/wow-bloodyscreen`. Local git repo on `main`,
-  **no remote**. Commit freely as changes are done. Commit with the personal
-  git identity.
-- **Game install (Wine):**
-  `<WoW>/_forever_/`.
-  `Interface/AddOns/BloodyScreenForever` is a **symlink** to this repo's
-  `BloodyScreenForever/`, so edits are live in the game.
+- **Repo:** <https://github.com/stixes/wow-bloodyscreen> (public), branch
+  `main`. Commits are authored as `stixes` with the GitHub noreply address
+  (set in the repo's local git config). Never commit with another identity.
+- **Machine-specific paths** (game install, account folder, symlink) are in
+  `README.local.md` when it exists. It's git-ignored; keep personal details
+  out of committed files.
+- **Game install:** `<WoW>/_forever_/Interface/AddOns/BloodyScreenForever`
+  is a **symlink** to this repo's `BloodyScreenForever/` during development,
+  so edits are live in the game. Uninstall the CurseForge copy in the
+  CurseForge app before restoring the symlink, or an app update writes into
+  the repo through the link.
 - **Saved variables:**
-  `_forever_/WTF/Account/<account>/SavedVariables/BloodyScreenForever.lua`. It's
-  outside the home, so read it only when the user asks.
-- **CurseForge:** project **1822467** ("Bloody Screen Forever"), WoW Forever
-  game version 1.60.1, game version id 17053. 0.17.0 was uploaded as a beta on
-  2026-11-22, by hand, and approved the same day. Later versions go
-  out with `tools/release.sh`.
+  `<WoW>/_forever_/WTF/Account/<account>/SavedVariables/BloodyScreenForever.lua`.
+  Read it only when the user asks.
+- **CurseForge:** project **1822467** ("Bloody Screen Forever"), version type
+  "WoW Forever" (slug `wow-forever`), game version 1.60.1 (id 17053). 0.17.0 was
+  uploaded by hand as a beta on 2026-11-22 and approved the same day.
 
 ### Dev loop
 
@@ -172,22 +177,38 @@ Chat can't be copied, so the diagnostics are written to the saved variables:
 
 ### Releasing
 
-1. Bump `## Version` in the TOC (and `## Interface` after a Forever patch).
-2. Add a `## <version>` section to `CHANGELOG.md` (Markdown; it becomes the
-   CurseForge changelog), then commit.
-3. Dry run first: `envchain curseforge tools/release.sh beta --dry-run`. Then
-   release: `envchain curseforge tools/release.sh beta` (or `alpha` /
-   `release`). The user has allowed releasing through the API.
+Releases go out from GitHub Actions when a tag is pushed:
 
-The script refuses to run with uncommitted changes, a version that's already
-tagged, or a missing changelog section. It builds the zip from committed files
-(`tools/package.sh`, `git archive`), finds CurseForge's game version for the
-TOC's Interface (16001 → 1.60.1), uploads through the CurseForge upload API
-(`https://wow.curseforge.com/api/projects/1822467/upload-file`) and tags
-`v<version>`. The token is `API_TOKEN` in the `curseforge` envchain namespace
-(`CF_API_TOKEN` also works). It reaches curl through stdin, never on the
-command line. Never print it. New files then wait for CurseForge moderation
-(minutes to about three workdays).
+1. Bump `## Version` in the TOC (and `## Interface` after a Forever patch).
+   `1.2.3` releases as *release*, `1.2.3-beta1` as *beta*, `1.2.3-alpha1` as
+   *alpha*.
+2. Add a `## <version>` section to `CHANGELOG.md` (Markdown; it becomes the
+   CurseForge changelog and the GitHub release notes). Commit and push `main`.
+3. Tag and push: `git tag -a v<version> -m "Release <version>" && git push origin v<version>`.
+   Remote git operations need the user's go-ahead.
+
+`.github/workflows/release.yml` then runs the tests, `tools/release.sh --ci`
+(checks that the tag matches the TOC version and that the changelog section
+exists, builds the zip from committed files with `git archive`, finds the
+CurseForge game version for the TOC's Interface, 16001 → 1.60.1, and uploads)
+and creates a GitHub release with the same zip. The CurseForge token is the
+repo secret `CF_API_KEY`; locally it's `API_TOKEN` in the `curseforge`
+envchain namespace. Never print it. New files then wait for CurseForge
+moderation (minutes to about three workdays).
+
+**Manual fallback** (GitHub down): `envchain curseforge tools/release.sh --dry-run`,
+then without `--dry-run`. It tags locally; pushing that tag later would make
+the workflow upload a second time.
+
+### Forever patches
+
+`.github/workflows/forever-patch.yml` runs daily (and by hand from the
+Actions tab). When CurseForge lists a newer "WoW Forever" version than the
+TOC's Interface, `tools/forever-patch.sh` bumps `## Interface` and the patch
+version and adds a changelog line, and the workflow opens a PR. Test in game,
+check the patch notes for API changes, merge, then tag as above. PRs opened by
+the workflow don't trigger CI on their own; the tag's release run tests
+before uploading. Locally: `envchain curseforge tools/forever-patch.sh --check`.
 
 ### Rules and gotchas
 
@@ -214,8 +235,7 @@ command line. Never print it. New files then wait for CurseForge moderation
 
 ## Status
 
-v0.17.0. The combo point trigger, energy bar, beads and hide when full were
-tested in the live client on earlier versions. The new splatter art in 0.17.0
-has not yet been seen in game. The stubbed-API harness (`luajit tests/harness.lua
+v0.17.0, on CurseForge (approved 2026-11-22). Tested in the live client,
+including the CurseForge install. The stubbed-API harness (`luajit tests/harness.lua
 BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
 the drawing area, the energy bar and the target-switch logic.

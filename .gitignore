@@ -1,2 +1,4 @@
 # release zips built by tools/package.sh
 dist/
+# machine-specific notes (paths, account names)
+README.local.md

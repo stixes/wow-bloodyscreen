@@ -1,0 +1,47 @@
+# Daily: if CurseForge lists a newer WoW Forever version than the TOC's
+# ## Interface, open a PR that bumps Interface and the patch version and adds
+# a changelog line. Test in game, merge, then tag v<version> to release.
+name: Forever patch watch
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check and bump
+        id: bump
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_KEY }}
+        run: |
+          out=$(tools/forever-patch.sh)
+          echo "$out"
+          echo "${out##*$'\n'}" >> "$GITHUB_OUTPUT"
+      - name: Open PR
+        if: steps.bump.outputs.new != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW: ${{ steps.bump.outputs.new }}
+        run: |
+          branch="forever-$NEW"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "branch $branch already exists - PR already open or handled"; exit 0
+          fi
+          version=$(sed -n 's/^## Version: *//p' BloodyScreenForever/BloodyScreenForever.toc | tr -d '\r')
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "chore: update for WoW Forever $NEW"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "Update for WoW Forever $NEW ($version)" \
+            --body "CurseForge lists WoW Forever $NEW, newer than the TOC's Interface. This bumps ## Interface and the version to $version and adds a changelog line.
+
+          Before merging: test in game (/reload is enough), and check the patch notes for API changes (secret values, combo points, UNIT_COMBAT). After merging, release with:
+
+              git pull && git tag -a v$version -m 'Release $version' && git push origin v$version"

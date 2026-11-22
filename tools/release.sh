@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # Release to CurseForge through its upload API.
 #
-#   envchain curseforge tools/release.sh [alpha|beta|release] [--dry-run]
+#   envchain curseforge tools/release.sh [alpha|beta|release] [--dry-run]   (manual fallback)
+#   tools/release.sh --ci                                                   (GitHub Actions, on a tag push)
+#
+# Normally releases go out from GitHub Actions (.github/workflows/release.yml)
+# when a v<version> tag is pushed; this script is what that workflow runs.
+# Release type: given, or from the version: 1.2.3-alpha1 -> alpha,
+# 1.2.3-beta2 -> beta, 1.2.3 -> release.
 #
 # Reads from the TOC: ## Version, ## Interface (-> game version, 16001 -> 1.60.1)
 # and ## X-Curse-Project-ID. Release notes come from CHANGELOG.md's
@@ -10,15 +16,18 @@
 # curseforge holds API_TOKEN); the token is never printed.
 # Steps: checks -> zip (tools/package.sh) -> game version id -> upload -> git tag v<version>.
 # --dry-run does everything except the upload and the tag.
+# --ci: HEAD must already be tagged v<version>; no tag is created. Writes
+# dist/RELEASE_NOTES.md and, under Actions, version/type/zip to $GITHUB_OUTPUT.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-type=beta dry=0
+type="" dry=0 ci=0
 for a in "$@"; do
     case "$a" in
         alpha|beta|release) type=$a ;;
         --dry-run) dry=1 ;;
-        *) echo "usage: $0 [alpha|beta|release] [--dry-run]" >&2; exit 2 ;;
+        --ci) ci=1 ;;
+        *) echo "usage: $0 [alpha|beta|release] [--dry-run] [--ci]" >&2; exit 2 ;;
     esac
 done
 
@@ -29,6 +38,13 @@ version=$(field Version)
 interface=$(field Interface)
 project=$(field X-Curse-Project-ID)
 [[ -n "$version" && -n "$interface" && -n "$project" ]] || die "TOC needs Version, Interface and X-Curse-Project-ID"
+if [[ -z "$type" ]]; then
+    case "$version" in
+        *-alpha*) type=alpha ;;
+        *-beta*) type=beta ;;
+        *) type=release ;;
+    esac
+fi
 
 # Interface 16001 -> game version name 1.60.1 (major, minor, patch)
 gv="$((interface / 10000)).$(((interface / 100) % 100)).$((interface % 100))"
@@ -36,7 +52,10 @@ gv="$((interface / 10000)).$(((interface / 100) % 100)).$((interface % 100))"
 # clean tree, new version, notes present
 git diff --quiet HEAD || die "uncommitted changes - commit first"
 [[ -z "$(git status --porcelain --untracked-files=no)" ]] || die "uncommitted changes - commit first"
-if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+if [[ $ci -eq 1 ]]; then
+    [[ "$(git rev-parse -q --verify "refs/tags/v$version^{commit}")" == "$(git rev-parse HEAD)" ]] \
+        || die "HEAD is not tagged v$version - the tag must match ## Version in the TOC"
+elif git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
     die "v$version is already tagged (released) - bump ## Version in the TOC"
 fi
 notes=$(awk -v v="$version" '
@@ -48,6 +67,10 @@ notes=$(awk -v v="$version" '
 pkg=$(tools/package.sh)       # no "| head": with pipefail that SIGPIPEs (exit 141)
 zip=${pkg%%$'\n'*}
 [[ -f "$zip" ]] || die "packaging failed"
+printf '%s\n' "$notes" > dist/RELEASE_NOTES.md
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    { echo "version=$version"; echo "type=$type"; echo "zip=$zip"; } >> "$GITHUB_OUTPUT"
+fi
 
 echo "release:  Bloody Screen Forever $version ($type)"
 echo "project:  $project   game version: $gv (Interface $interface)"
@@ -81,5 +104,8 @@ code=${resp##*$'\n'}; body=${resp%$'\n'*}
 fileid=$(jq -r '.id // empty' <<<"$body")
 echo "uploaded: file id ${fileid:-?} - waiting for CurseForge processing/moderation"
 
-git tag -a "v$version" -m "Release $version ($type) - CurseForge file ${fileid:-?}"
-echo "tagged v$version"
+if [[ $ci -eq 0 ]]; then
+    git tag -a "v$version" -m "Release $version ($type) - CurseForge file ${fileid:-?}"
+    echo "tagged v$version - push it with: git push origin v$version (the release workflow"
+    echo "would upload again: delete the duplicate on CurseForge, or don't push the tag)"
+fi

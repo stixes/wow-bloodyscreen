@@ -1,0 +1,19 @@
+# Syntax check + stubbed-API harness on every push and PR.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit
+      - name: Syntax
+        run: for f in BloodyScreenForever/*.lua; do luajit -bl "$f" > /dev/null; done
+      - name: Harness
+        run: luajit tests/harness.lua BloodyScreenForever

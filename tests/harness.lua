@@ -81,7 +81,11 @@ local function shapes() local s={} for _,t in ipairs(texs) do if t.shown and tos
 local function cp(n) power=n; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.02) end
 local function crit() fire("UNIT_COMBAT","target","WOUND","CRITICAL",1234,1) end
 local function mode(m) ns.db.mode=m; ns.ClearNow() end
-local function check(label, cond) print((cond and "PASS " or "FAIL ")..label) end
+local failures = 0
+local function check(label, cond)
+    if not cond then failures = failures + 1 end
+    print((cond and "PASS " or "FAIL ")..label)
+end
 fire("ADDON_LOADED","BloodyScreenForever"); fire("PLAYER_ENTERING_WORLD")
 local keys={} for k,v in pairs(ns.db) do keys[#keys+1]=k.."="..tostring(v) end table.sort(keys)
 print("migrated:", table.concat(keys," "), "| settings calls", nset)
@@ -255,3 +259,8 @@ SlashCmdList.BLOODYSCREENFOREVER("trace")
 power=1; barState.traceUpdate(); power=2; barState.traceUpdate()
 SlashCmdList.BLOODYSCREENFOREVER("trace")
 print("harness done")
+
+if failures > 0 then
+    print(("%d check(s) failed"):format(failures))
+    os.exit(1)
+end
