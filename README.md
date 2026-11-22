@@ -144,7 +144,8 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
   outside the home, so read it only when the user asks.
 - **CurseForge:** project **1822467** ("Bloody Screen Forever"), WoW Forever
   game version 1.60.1, game version id 17053. 0.17.0 was uploaded as a beta on
-  2026-11-22, by hand, and was pending moderation.
+  2026-11-22, by hand, and approved the same day. Later versions go
+  out with `tools/release.sh`.
 
 ### Dev loop
 
