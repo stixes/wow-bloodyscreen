@@ -22,11 +22,11 @@ Groups 1-3 were implemented in commit `2eca616` before this change was recorded.
 
 Set up first: uninstall the CurseForge copy in the CurseForge app, restore the dev symlink, then `/reload`.
 
-- [ ] 4.1 Rogue: open `/bs`. The Trigger shows "Automatic" (migrated from Combo points) and the hide setting reads "Hide when idle out of combat". In a fight, splatters follow combo points as before, crits add none, and the beads show and follow target switches.
-- [ ] 4.2 Warrior (or any non-rogue): `/bs debug` prints "mode=auto (in effect: crittimed)". In a fight, each crit splatters, and each splatter fades about 5 s after it appeared. No beads under the bar; the bar is red (rage).
-- [ ] 4.3 Warrior out of combat: once rage has decayed to 0, the bar disappears within about 3 s. It shows again on entering combat. With the hide setting off, it stays visible at the out-of-combat opacity.
-- [ ] 4.4 Druid, if you have one: in cat form, beads and combo splatters. Shift to bear: splatters clear, beads disappear, and crits splatter. Shift back: beads return.
-- [ ] 4.5 If anything is off, run `/bs debug`, then `/reload`, and ask for the saved variables to be read. Fix as 0.18.0 (still unreleased), and add harness checks for whatever was missed.
+- [x] 4.1 Rogue: open `/bs`. The Trigger shows "Automatic" (migrated from Combo points) and the hide setting reads "Hide when idle out of combat". In a fight, splatters follow combo points as before, crits add none, and the beads show and follow target switches.
+- [x] 4.2 Warrior (or any non-rogue): `/bs debug` prints "mode=auto (in effect: crittimed)". In a fight, each crit splatters, and each splatter fades about 5 s after it appeared. No beads under the bar; the bar is red (rage).
+- [x] 4.3 Warrior out of combat: once rage has decayed to 0, the bar disappears within about 3 s. It shows again on entering combat. With the hide setting off, it stays visible at the out-of-combat opacity.
+- [ ] 4.4 Druid: in cat form, beads and combo splatters. Shift to bear: splatters clear, beads disappear, and crits splatter. Shift back: beads return. **Not tested (no druid available, 2026-11-22). Released as untested; the CHANGELOG and README say so.**
+- [x] 4.5 If anything is off, run `/bs debug`, then `/reload`, and ask for the saved variables to be read. Fix as 0.18.0 (still unreleased), and add harness checks for whatever was missed. (4.1-4.3 passed; nothing to fix.)
 
 ## 5. Release
 
