@@ -1,5 +1,20 @@
 # Bloody Screen Forever
 
+**For all my rogues and fury warriors out there.**
+
+Bloody Screen Forever keeps your interface lean and puts the one number you
+watch where your eyes already are: a slim, translucent energy or rage bar
+right under your character, with combo points as little beads of blood for
+rogues. It fades away when you're idle and stays out of the way when you're
+not.
+
+And when the hits land, the screen shows it. Combo points and crits splatter
+blood across your view, then fade as quickly as they came. It's flavour for
+every crit-loving class: rogues build their splatters one combo point at a
+time, and a high-crit fury or arms warrior paints the screen with every crit.
+
+## About this port
+
 A port of Feador's **Bloody Screen** addon (as last maintained by Resike,
 v5.0.1 for MoP) to **WoW Forever** (Mainline/Midnight API,
 `## Interface: 16001`). Combo points or critical hits splash blood on your
@@ -39,7 +54,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 
 | setting | default | notes |
 |---|---|---|
-| Trigger | Combo points | Combo points / Crits – hide when combat ends / Crits – timer (each splatter) / Crits – timer (shared). The original defaulted to crits. |
+| Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits – hide when combat ends / Crits – timer (each splatter) / Crits – timer (shared). The original defaulted to crits. |
 | Hide the splatters after | 5 s | crit timer triggers. The original: 10 s. |
 | Maximal number of splatters | 10 | |
 | Splatter size | 266 px | the original's 266 px × scale 1 |
@@ -47,7 +62,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Energy bar | on | new, see below |
 | Energy bar position | −140 px | below screen centre |
 | Energy bar opacity in / out of combat | 40% / 15% | also applies to the combo points |
-| Hide when full out of combat | on | hides the bar (and baubles) out of combat at full power with no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "full" means 3 s out of combat with no power change. |
+| Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. |
 | Avoid the centre | off | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
 
 Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
@@ -96,7 +111,9 @@ Under it is a row of round combo point baubles shaded like beads of blood
 more with talents), red as you gain them and dark otherwise (own art,
 `tools/gen_drops.py`). They show the points on your current target, from the
 same `GetComboPoints("player", "target")` read as the splatters, so they update
-on a target switch. The row is hidden for classes without combo points.
+on a target switch. The row shows only for rogues and druids in cat form,
+decided by class: the client may report a combo point maximum for other
+classes too.
 
 On Midnight/Forever your main resource is a **secret value** in combat: addons
 can display it but can't compare it or do maths with it. The bar passes

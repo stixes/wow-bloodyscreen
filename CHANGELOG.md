@@ -3,6 +3,14 @@
 Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown.
 
+## 0.18.0
+
+For all my rogues and fury warriors out there: warriors are now first-class citizens.
+
+* New default trigger, **Automatic**: combo points for rogues (and druids in cat form), crits for everyone else. Settings are shared across your characters, so your warrior alt gets crit splatters while your rogue keeps combo points. If you had "Combo points" selected, you're moved to Automatic, which works the same on a rogue.
+* Combo point beads only show for rogues and druids in cat form.
+* The energy bar knows rage rests at empty: out of combat it hides once your rage has decayed, like energy at full. The setting is now called "Hide when idle out of combat".
+
 ## 0.17.0
 
 First public release (beta).

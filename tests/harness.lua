@@ -16,8 +16,9 @@ local function Tex()
   texs[#texs+1]=t; return t
 end
 UIParent = setmetatable({GetWidth=function() return 1920 end, GetHeight=function() return 1080 end}, {__index=function() return function() end end})
-CreateFrame = function(_, name)
+CreateFrame = function(_, name, parent, template)
   local f = {w=0,h=0,name=name}
+  if parent and parent.name == "BloodyScreenForeverEnergyBar" and not template then barState.row = f end
   function f:SetScript(n, fn)
     if self.name == "BloodyScreenForeverFrame" then scripts[n] = fn
     elseif self.name == "BloodyScreenForeverEnergyBar" then
@@ -50,10 +51,13 @@ local SECRET = setmetatable({}, {
   __lt=function() error("compare secret") end, __le=function() error("compare secret") end,
   __concat=function() return "SECRET" end, __tostring=function() return "SECRET" end})
 local energy = 60
-UnitPower = function(_, pt) if pt == 3 or pt == nil then return secretPower and SECRET or energy end return power end
+local rage = 0
+playerClass, ptype, ptoken = "ROGUE", 3, "ENERGY"
+UnitClass = function() return "Class", playerClass end
+UnitPower = function(_, pt) if pt == 1 then return rage end if pt == 3 or pt == nil then return secretPower and SECRET or energy end return power end
 local cpMax = 5
 UnitPowerMax = function(_, pt) if pt == 4 then return cpMax end return (secretPower == true) and SECRET or 100 end
-UnitPowerType = function() return 3, "ENERGY" end
+UnitPowerType = function() return ptype, ptoken end
 PowerBarColor = { ENERGY = {r=1,g=0.9,b=0.3} }
 
 UnitAffectingCombat = function() return inCombatFlag end
@@ -259,6 +263,46 @@ SlashCmdList.BLOODYSCREENFOREVER("trace")
 power=1; barState.traceUpdate(); power=2; barState.traceUpdate()
 SlashCmdList.BLOODYSCREENFOREVER("trace")
 print("harness done")
+
+-- 0.18.0: "auto" trigger and warriors -------------------------------------
+check("default trigger is auto", ns.DEFAULTS.mode == "auto")
+SlashCmdList.BLOODYSCREENFOREVER("default"); inCombatFlag = true
+barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); power = 0; run(1)
+power = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1)
+check("auto, rogue: combo points -> 3 splatters", vis() == 3)
+crit(); run(0.1); check("auto, rogue: crits ignored", vis() == 3)
+power = 0; run(1)
+
+playerClass, ptype, ptoken = "WARRIOR", 1, "RAGE"
+fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player"); run(0.1)
+check("warrior: combo bead row hidden", barState.row and not barState.row:IsShown())
+power = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1)
+check("auto, warrior: combo points ignored", vis() == 0)
+secret = false -- an earlier check left crit flags secret
+fire("PLAYER_ENTER_COMBAT"); crit(); run(0.1); crit(); run(0.1)
+check("auto, warrior: crits splatter (2)", vis() == 2)
+run(ns.db.timer + 1)
+check("auto, warrior: crit splatters fade after the timer", vis() == 0)
+fire("PLAYER_LEAVE_COMBAT"); power = 0
+
+inCombatFlag = false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+rage = 0; run(0.1); check("warrior: rage empty out of combat -> bar hidden", barState.alpha == 0)
+rage = 30; run(0.1); check("warrior: rage left out of combat -> bar shown", barState.alpha == ns.db.barAlphaIdle)
+rage = 0
+
+playerClass, ptype, ptoken = "DRUID", 3, "ENERGY"
+fire("UNIT_DISPLAYPOWER", "player"); run(0.1)
+power = 2; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1)
+check("auto, druid in cat form: combo points -> 2 splatters", vis() == 2)
+barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+check("druid in cat form: combo bead row shown", barState.row:IsShown())
+ptype, ptoken = 1, "RAGE"
+fire("UNIT_DISPLAYPOWER", "player"); run(0.1)
+check("auto, druid leaves cat form: combo splatters cleared", vis() == 0)
+power = 0
+playerClass, ptype, ptoken = "ROGUE", 3, "ENERGY"
+fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+check("rogue: combo bead row shown", barState.row:IsShown())
 
 if failures > 0 then
     print(("%d check(s) failed"):format(failures))

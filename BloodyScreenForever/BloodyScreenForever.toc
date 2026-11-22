@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Bloody Screen |cffb01010Forever|r
-## Notes: Splatters blood on your screen on combo points or crits, plus an energy bar with combo points under your character. A port of Feador's Bloody Screen for WoW Forever.
+## Notes: Blood on your screen for combo points and crits, plus a slim energy or rage bar under your character. For rogues, warriors and every crit-loving class. A port of Feador's Bloody Screen for WoW Forever.
 ## Author: stixes
-## Version: 0.17.0
+## Version: 0.18.0
 ## SavedVariables: BloodyScreenForeverDB
 ## X-Curse-Project-ID: 1822467
 ## X-Website: https://github.com/stixes/wow-bloodyscreen

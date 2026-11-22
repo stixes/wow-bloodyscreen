@@ -9,7 +9,8 @@
 -- through the ten pre-faded files, and the four triggers with their rules.
 --
 -- Changed because the API is gone on Midnight/Forever:
---   Combo points: UNIT_COMBO_POINTS/GetComboPoints -> UNIT_POWER_UPDATE/UnitPower.
+--   Combo points: UNIT_COMBO_POINTS is gone; GetComboPoints("player", "target")
+--   is polled, with UNIT_POWER_UPDATE telling hits from target switches.
 --   Crits: the combat log is closed to addons, so crits come from UNIT_COMBAT
 --   ("target", "WOUND", "CRITICAL"). It carries no source, so instead of the
 --   original's sourceGUID == player check, a crit counts only while you
@@ -25,7 +26,7 @@ local FADE_STEP = 0.05     -- s per pre-faded step: 10 steps = the original's 0.
 local CAST_WINDOW = 1.5    -- s after your own cast during which a target crit counts
 local MAX_SLOTS = 20
 local CENTRE_ZONE = 0.20   -- "avoid the centre": centred zone, this share of screen width and height
-local SETTINGS_VERSION = 8
+local SETTINGS_VERSION = 9
 local MAX_OVERLAP = 0.10   -- splatters overlap by at most this share of the smaller one's width
 local BLOOD_RADIUS = 0.75  -- the blood fills roughly this share of a texture's half-size
 local PLACE_TRIES = 60
@@ -33,8 +34,10 @@ local PlaceSplatter
 
 local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
 
--- The original's four triggers (BS_BloodBehaviour 1-4).
+-- The original's four triggers (BS_BloodBehaviour 1-4), plus "auto" (new):
+-- combo points for classes that have them, crits for everyone else.
 ns.MODES = {
+    { "auto",       "Automatic - combo points for rogues, crits for others" },
     { "combo",      "Combo points" },
     { "crit",       "Crits - hide when combat ends" },
     { "crittimed",  "Crits - hide after the timer (each splatter)" },
@@ -43,10 +46,11 @@ ns.MODES = {
 local MODE_OK = {}
 for _, m in ipairs(ns.MODES) do MODE_OK[m[1]] = true end
 
--- Original defaults, except: mode (original: crits), timer (original: 10 s),
+-- Original defaults, except: mode (original: crits; settings are per account,
+-- so "auto" picks per character), timer (original: 10 s),
 -- drawing area in % of the screen (original: 500x500 px), and avoidCentre (new).
 ns.DEFAULTS = {
-    mode        = "combo",
+    mode        = "auto",
     timer       = 5,     -- BS_Timer_RunTime
     max         = 10,    -- BS_MaximumTextures
     size        = 266,   -- 266 px x BS_MaximalScalingFactor (1)
@@ -62,6 +66,32 @@ ns.DEFAULTS = {
 }
 
 local db
+
+-- Who has combo points: rogues, and druids in cat form (energy). Decided by
+-- class rather than UnitPowerMax(ComboPoints), which other classes may report.
+local function HasComboPoints()
+    local _, class = UnitClass("player")
+    if class == "ROGUE" then return true end
+    if class == "DRUID" then
+        local _, token = UnitPowerType("player")
+        return token == "ENERGY"
+    end
+    return false
+end
+ns.HasComboPoints = HasComboPoints
+
+-- The trigger in effect: db.mode with "auto" resolved. "auto" without combo
+-- points means crits that fade after the timer, so a long fight doesn't end
+-- behind a wall of blood.
+local AUTO_CRIT = "crittimed"
+local mode
+local function ResolveMode()
+    local m = db.mode
+    if m == "auto" then m = HasComboPoints() and "combo" or AUTO_CRIT end
+    local changed = m ~= mode
+    mode = m
+    return changed
+end
 local slots = {}        -- [0..max-1] = { tex, shape, step, fading, fadingIn, nextStep, timer }
 local ghosts = {}       -- textures detached from slots on a target switch, fading out
 local texPool = {}      -- spare textures
@@ -117,7 +147,7 @@ ns.ComboOnTarget = ComboOnTarget
 local function ReadCombo()
     local cur = ComboOnTarget()
     if not cur then
-        if not warnedSecret and db and db.mode == "combo" then
+        if not warnedSecret and db and mode == "combo" then
             warnedSecret = true
             Print("combo points are not readable on this client (secret value). Try /bs debug, or a crit trigger.")
         end
@@ -244,6 +274,7 @@ local function FadeAll()
 end
 
 local function ClearNow()
+    if db then ResolveMode() end
     for _, s in pairs(slots) do HideSlot(s) end
     for i = #ghosts, 1, -1 do
         ghosts[i].tex:Hide()
@@ -284,7 +315,7 @@ area:SetScript("OnUpdate", function()
         if now < previewUntil then return end
         previewUntil = 0
         FadeAll()
-    elseif db.mode == "combo" then
+    elseif mode == "combo" then
         -- polled every frame: on Forever the new target's count can arrive with
         -- no event at all (or a late one), so show and fade from the live value
         local cp = ReadCombo() or 0
@@ -293,9 +324,9 @@ area:SetScript("OnUpdate", function()
         for i = 0, math.min(cp, db.max) - 1 do
             if not Visible(i) then ShowSlot(i, fadeIn) end
         end
-    elseif db.mode == "crit" then
+    elseif mode == "crit" then
         if not UnitAffectingCombat("player") then FadeAll() end
-    elseif db.mode == "crittimed" then
+    elseif mode == "crittimed" then
         for i = 0, db.max - 1 do
             local s = slots[i]
             if s and s.timer > 0 and s.timer < now - db.timer and not s.fading then
@@ -303,7 +334,7 @@ area:SetScript("OnUpdate", function()
                 StartFade(i)
             end
         end
-    elseif db.mode == "critshared" then
+    elseif mode == "critshared" then
         if globalTimer > 0 and globalTimer < now - db.timer then
             globalTimer = 0
             FadeAll()
@@ -346,7 +377,7 @@ end)
 -- Triggers (BS_OnEvent)
 ---------------------------------------------------------------------------
 local function OnCombo(fromHit)
-    if db.mode ~= "combo" then return end
+    if mode ~= "combo" then return end
     local cp = ReadCombo()
     if not cp then return end
     local fadeIn = not fromHit and SwitchFade(GetTime())
@@ -359,7 +390,7 @@ end
 -- no power event: crossfade to the new target's points now, and read again
 -- next frame in case the count updates a frame late.
 local function OnTargetChanged()
-    if db.mode ~= "combo" then return end
+    if mode ~= "combo" then return end
     lastTargetSwitch = GetTime()
     DetachAll()
     OnCombo()
@@ -367,7 +398,7 @@ local function OnTargetChanged()
 end
 
 local function OnCrit()
-    if db.mode == "crit" then
+    if mode == "crit" then
         critCount = critCount + 1
         for i = 0, math.min(critCount, db.max) - 1 do
             if not Visible(i) then ShowSlot(i) end
@@ -375,7 +406,7 @@ local function OnCrit()
     else -- crittimed / critshared: next slot in rotation
         lastShown = (lastShown + 1) % db.max
         ShowSlot(lastShown)
-        if db.mode == "crittimed" then
+        if mode == "crittimed" then
             slots[lastShown].timer = GetTime()
         else
             globalTimer = GetTime()
@@ -386,7 +417,7 @@ end
 -- UNIT_COMBAT(unit, action, flagText, amount, schoolMask)
 local function OnUnitCombat(unit, action, flagText)
     -- Only the "target" token, like the original's destGUID == target.
-    if unit ~= "target" or db.mode == "combo" then return end
+    if unit ~= "target" or mode == "combo" then return end
     if not Readable(flagText) then stats.secretFlag = stats.secretFlag + 1 return end
     if flagText ~= "CRITICAL" then return end
     if Readable(action) and action ~= "WOUND" then return end -- heals, misses, etc.
@@ -410,6 +441,10 @@ function handlers.ADDON_LOADED(name)
     db = BloodyScreenForeverDB
     -- 0.7.0: settings match the original's; drop retired keys
     if db.mode == "combat" or db.mode == "mirror" then db.mode = "combo" end
+    if (db.version or 0) < 9 and db.mode == "combo" then
+        -- 0.18.0: "auto" is the same for rogues, and gives warrior alts crits
+        db.mode = "auto"
+    end
     if (db.version or 0) < 8 then
         -- 0.8.0: area became % of screen, timer default 5 s
         db.areaW, db.areaH, db.timer = nil, nil, nil
@@ -425,6 +460,7 @@ function handlers.ADDON_LOADED(name)
     if not MODE_OK[db.mode] then db.mode = ns.DEFAULTS.mode end
     db.max = math.max(1, math.min(MAX_SLOTS, math.floor(db.max)))
     ns.db = db
+    ResolveMode()
     area:UnregisterEvent("ADDON_LOADED")
     ns.ApplyLayout()
     if ns.SetupBar then ns.SetupBar() end
@@ -435,7 +471,7 @@ function handlers.ADDON_LOADED(name)
 end
 
 function handlers.PLAYER_ENTERING_WORLD()
-    ns.ApplyLayout() -- screen size is final here
+    ns.ApplyLayout() -- screen size is final here (also resolves "auto")
     autoAttacking, autoRepeat = false, false
 end
 
@@ -460,6 +496,10 @@ area:SetScript("OnEvent", function(_, event, ...)
     if h then h(...) end
 end)
 handlers.DISPLAY_SIZE_CHANGED = function() ns.ApplyLayout() end
+-- a druid shifting into or out of cat form changes what "auto" means
+function handlers.UNIT_DISPLAYPOWER()
+    if db and ResolveMode() then ClearNow() end
+end
 handlers.UI_SCALE_CHANGED = handlers.DISPLAY_SIZE_CHANGED
 
 for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED", "UNIT_COMBAT", "PLAYER_ENTER_COMBAT",
@@ -467,6 +507,7 @@ for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHA
     area:RegisterEvent(e)
 end
 area:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
+area:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
 area:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 
 ---------------------------------------------------------------------------
@@ -579,9 +620,9 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         local Print = function(msg) Print(msg); db.debug[#db.debug + 1] = msg end
         local ok, cur = pcall(UnitPower, "player", COMBO)
         local gcp = GetComboPoints and select(2, pcall(GetComboPoints, "player", "target"))
-        Print(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s"):format(
+        Print(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s (in effect: %s)"):format(
             tostring(ok), tostring(IsSecret(cur)), IsSecret(cur) and "?" or tostring(cur),
-            IsSecret(gcp) and "?" or tostring(gcp), db.mode))
+            IsSecret(gcp) and "?" or tostring(gcp), db.mode, tostring(mode)))
         Print(("crits on target: seen=%d shown=%d dropped(strict)=%d secret-flag=%d | autoattack=%s autorepeat=%s strict=%s"):format(
             stats.crits, stats.counted, stats.dropped, stats.secretFlag,
             tostring(autoAttacking), tostring(autoRepeat), tostring(db.strict)))

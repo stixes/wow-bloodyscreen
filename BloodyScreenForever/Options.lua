@@ -40,7 +40,7 @@ function ns.BuildOptions()
         local c = Settings.CreateControlTextContainer()
         for _, m in ipairs(ns.MODES) do c:Add(m[1], m[2]) end
         return c:GetData()
-    end, "Combo points: one splatter per combo point.\nCrits: a splatter on each critical hit on your target, hidden when combat ends or after the timer.")
+    end, "Automatic: combo points for rogues (and druids in cat form), crits that fade after the timer for everyone else. Settings are shared across your characters, so this suits alts.\nCombo points: one splatter per combo point.\nCrits: a splatter on each critical hit on your target, hidden when combat ends or after the timer.")
     mode:SetValueChangedCallback(function() ns.ClearNow() end)
 
     Slider("timer", "Hide the splatters after", "For the crit timer triggers (the original: 10 s).", 1, 60, 1, "%d s")
@@ -71,8 +71,8 @@ function ns.BuildOptions()
     end
     Check("bar", "Show energy bar",
         "A small translucent bar for your energy (or rage, mana...) under your character, with combo points below it.")
-    Check("barHideFull", "Hide when full out of combat",
-        "Hide the bar out of combat while your energy (or mana...) is full and you have no combo points.")
+    Check("barHideFull", "Hide when idle out of combat",
+        "Hide the bar out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points.")
     Slider("barY", "Position", "Distance below the screen centre.", -500, 0, 5, "%d px", ns.ApplyBar)
     Pct("barAlphaCombat", "Opacity in combat", "How visible the energy bar and combo points are in combat.")
     Pct("barAlphaIdle", "Opacity out of combat", "How visible the energy bar and combo points are out of combat.")

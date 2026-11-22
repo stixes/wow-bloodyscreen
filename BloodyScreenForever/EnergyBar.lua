@@ -1,6 +1,6 @@
 -- Energy bar: a small, translucent bar for your main resource (energy, rage,
 -- mana, ...), just below the screen centre, so it sits under your character,
--- with combo point baubles beneath it.
+-- with combo point baubles beneath it for rogues (and druids in cat form).
 --
 -- On Midnight/Forever the player's primary power is a SECRET value in combat:
 -- addon code may pass it on but not compare it or do maths with it. So the
@@ -46,14 +46,20 @@ local function Color(token)
     return c or FALLBACK_COLOR
 end
 
--- Full power? Compare directly when the values are readable. On Forever the
--- player's primary power is secret even out of combat (UnitPowerMax is not;
--- measured with /bs debug, build 16001), so then: power events stop once
--- energy (or mana) is full, and QUIET seconds without one means full.
+-- Power that rests at empty out of combat (rage decays); everything else
+-- (energy, mana) rests at full.
+local EMPTY_AT_REST = { RAGE = true }
+
+-- Power at rest (energy/mana full, rage empty)? Compare directly when the
+-- values are readable. On Forever the player's primary power is secret even
+-- out of combat (UnitPowerMax is not; measured with /bs debug, build 16001),
+-- so then: power events stop once power is at rest, and QUIET seconds
+-- without one means at rest.
 local function IsFull()
     local ok1, cur = pcall(UnitPower, "player", powerType)
     local ok2, max = pcall(UnitPowerMax, "player", powerType)
     if ok1 and ok2 and Readable(cur) and Readable(max) and type(cur) == "number" and type(max) == "number" then
+        if EMPTY_AT_REST[powerToken] then return cur <= 0 end
         return max > 0 and cur >= max
     end
     return GetTime() - lastPowerChange >= QUIET
@@ -99,8 +105,10 @@ end
 local function UpdateCombo()
     if not baubleRow then return end
     local okMax, max = pcall(UnitPowerMax, "player", COMBO)
-    if not okMax or not Readable(max) or type(max) ~= "number" or max <= 0 then
-        baubleRow:Hide() -- class without combo points (or unreadable)
+    if not (ns.HasComboPoints and ns.HasComboPoints())
+        or not okMax or not Readable(max) or type(max) ~= "number" or max <= 0 then
+        baubleRow:Hide() -- not a rogue or a druid in cat form (or unreadable)
+        lastCur = nil
         return
     end
     max = math.min(max, MAX_BAUBLES)
