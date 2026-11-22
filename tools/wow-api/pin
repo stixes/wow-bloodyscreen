@@ -1,0 +1,7 @@
+# Upstream commit of Ketho/BlizzardInterfaceResources (branch "forever") that
+# tools/wow-api/update.sh fetches, and the game build it was dumped on.
+# Change with: tools/wow-api/update.sh --pin <sha>
+sha=e230342a476eb4ef484ba7b34adc0da6ecc6acc1
+version=1.60.1
+build=70938
+interface=16001

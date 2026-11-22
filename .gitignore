@@ -2,3 +2,7 @@
 dist/
 # machine-specific notes (paths, account names)
 README.local.md
+# WoW Forever API list and its download cache (tools/wow-api/update.sh);
+# generated, never committed: the upstream data has no licence
+tools/wow-api/forever-api.lua
+tools/wow-api/cache/

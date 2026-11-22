@@ -4,13 +4,13 @@ Owner decisions folded in: the generated list is not committed and CI fetches it
 
 ## 1. Generator, pin and update script
 
-- [ ] 1.1 Add `tools/wow-api/gen.lua` (Lua 5.1, run with luajit) per design D4. It takes a directory holding `GlobalAPI.lua`, `LuaEnum.lua`, `FrameXML.lua`, `Frames.lua` and `Mixins.lua`, plus the pin values, and writes a sorted `return { … }` read_globals table with a header comment (upstream repo, commit SHA, game version, build, interface). Verify: running it twice on the same input gives byte-identical output.
-- [ ] 1.2 Add `tools/wow-api/pin` with `sha=e230342a476eb4ef484ba7b34adc0da6ecc6acc1`, `version=1.60.1`, `build=70938`, `interface=16001`. Add `tools/wow-api/update.sh` per design D3.
+- [x] 1.1 Add `tools/wow-api/gen.lua` (Lua 5.1, run with luajit) per design D4. It takes a directory holding `GlobalAPI.lua`, `LuaEnum.lua`, `FrameXML.lua`, `Frames.lua` and `Mixins.lua`, plus the pin values, and writes a sorted `return { … }` read_globals table with a header comment (upstream repo, commit SHA, game version, build, interface). Verify: running it twice on the same input gives byte-identical output.
+- [x] 1.2 Add `tools/wow-api/pin` with `sha=e230342a476eb4ef484ba7b34adc0da6ecc6acc1`, `version=1.60.1`, `build=70938`, `interface=16001`. Add `tools/wow-api/update.sh` per design D3.
   - Default mode downloads the five files at the pinned SHA into `tools/wow-api/cache/<sha>/`, skipping files already there, then generates `tools/wow-api/forever-api.lua`.
   - `--pin <sha>` reads version, build and interface from that commit's `README.md` `GetBuildInfo()` line, rewrites `pin`, then runs the default mode.
   - Use `set -euo pipefail`, fail on any download error, download to a temp name and move it into place so a partial file never lands in the cache, and add a usage comment. Use no personal paths.
   - Verify: from a clean checkout, `tools/wow-api/update.sh` produces a file whose header matches the pin, and which contains `issecretvalue`, `canaccessvalue`, `GetComboPoints`, `C_Timer.After` and `Enum.PowerType.ComboPoints`. A second run makes no network requests.
-- [ ] 1.3 Add `tools/wow-api/forever-api.lua` and `tools/wow-api/cache/` to `.gitignore`. Verify: after running `update.sh`, `git status` shows neither path, and `tools/package.sh` output still lists only files under `BloodyScreenForever/`.
+- [x] 1.3 Add `tools/wow-api/forever-api.lua` and `tools/wow-api/cache/` to `.gitignore`. Verify: after running `update.sh`, `git status` shows neither path, and `tools/package.sh` output still lists only files under `BloodyScreenForever/`.
 
 ## 2. luacheck config
 
