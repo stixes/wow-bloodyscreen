@@ -217,7 +217,14 @@ Releases go out from GitHub Actions when a tag is pushed:
    *alpha*.
 2. Add a `## <version>` section to `CHANGELOG.md` (Markdown; it becomes the
    CurseForge changelog and the GitHub release notes). Commit and push `main`.
-3. Tag and push: `git tag -a v<version> -m "Release <version>" && git push origin v<version>`.
+3. **Review with a clean context.** Run the `release-reviewer` agent
+   (`.claude/agents/release-reviewer.md`) and give it only the version and the
+   previous tag, not a summary of the work: it reads the whole README,
+   changelog, TOC, specs and diff itself, which catches what the author's
+   context hides (stale text in sections nobody edited, overstated claims).
+   Fix the blockers, commit, and save its report plus what was done about each
+   finding to `dist/release-review-v<version>.md`.
+4. Tag and push: `git tag -a v<version> -m "Release <version>" && git push origin v<version>`.
    Remote git operations need the user's go-ahead.
 
 A release requires every OpenSpec change to be archived:
@@ -225,7 +232,8 @@ A release requires every OpenSpec change to be archived:
 anything but `archive/`. `tools/release.sh` runs it before packaging (so the
 workflow stops before uploading), and a Claude Code hook
 (`tools/hooks/pre-release-tag.sh`) blocks creating or pushing a `v*` tag until
-it passes.
+it passes. The same hook also blocks the tag until
+`dist/release-review-v<version>.md` exists (step 3).
 
 `.github/workflows/release.yml` then runs the tests, `tools/release.sh --ci`
 (checks that the tag matches the TOC version and that the changelog section
