@@ -105,8 +105,12 @@ if [[ $dry -eq 1 ]]; then echo "dry run: stopping before upload"; exit 0; fi
 meta=$(jq -n --arg name "Bloody Screen Forever $version" --arg notes "$notes" \
     --arg type "$type" --argjson gv "$gvid" \
     '{displayName: $name, changelog: $notes, changelogType: "markdown", gameVersions: [$gv], releaseType: $type}')
+# The metadata goes in from a file: in a -F value curl reads ";" as the start of
+# its own options, which cut the JSON at the first ";" in the release notes.
+metafile=$(mktemp); trap 'rm -f "$metafile"' EXIT
+printf '%s' "$meta" > "$metafile"
 resp=$(auth | curl -sS -K - -w '\n%{http_code}' \
-    -F "metadata=$meta;type=application/json" -F "file=@$zip" \
+    -F "metadata=<$metafile;type=application/json" -F "file=@$zip" \
     "$api/projects/$project/upload-file")
 code=${resp##*$'\n'}; body=${resp%$'\n'*}
 [[ "$code" == 200 || "$code" == 201 ]] || die "upload failed (HTTP $code): $body"
