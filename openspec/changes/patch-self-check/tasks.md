@@ -32,7 +32,7 @@
 
 ## 4. In-game check (only what needs the real game)
 
-- [ ] 4.1 Cold login (quit to desktop and start the game, not `/reload`) on the rogue, with no target. Expect: no BloodyScreen line in chat, splatters, beads and energy bar as usual. Fight a mob until it takes a hit (a crit is not needed), then `/reload` and ask for the saved variables to be read: `selfcheck` should show every check ok, with the real values for `GetComboPoints` with no target at login, the power value as secret and the max readable, the crit flag readable, and the build key. Anything `unknown` or `off` there: report it before release, it means an unmeasured assumption was wrong
+- [x] 4.1 Cold login (quit to desktop and start the game, not `/reload`) on the rogue, with no target. Expect: no BloodyScreen line in chat, splatters, beads and energy bar as usual. Fight a mob until it takes a hit (a crit is not needed), then `/reload` and ask for the saved variables to be read: `selfcheck` should show every check ok, with the real values for `GetComboPoints` with no target at login, the power value as secret and the max readable, the crit flag readable, and the build key. Anything `unknown` or `off` there: report it before release, it means an unmeasured assumption was wrong (Passed 2026-11-23, build 1.60.1.71037: no chat line on a cold login; the record after /reload has every check ok, `auto: off` because the player was in a battleground, nothing announced; GetComboPoints with no target returns 0.)
 
 ## Workflow follow-up
 
