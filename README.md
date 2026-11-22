@@ -310,6 +310,11 @@ repo secret `CF_API_KEY`; locally it's `API_TOKEN` in the `curseforge`
 envchain namespace. Never print it. New files then wait for CurseForge
 moderation (minutes to about three workdays).
 
+If a pushed tag's release fails before anything is published (no CurseForge
+file, no GitHub release), fix the cause and release the next patch version;
+leave the failed tag and add a short changelog section saying it was never
+published (as 0.19.0 / 0.19.1).
+
 A tag whose message contains `[no-curseforge]` gets a GitHub release only
 (e.g. to re-run a release without uploading twice).
 
@@ -388,4 +393,5 @@ Tested in the live client on a rogue and a warrior; druid support has not been
 tested in game yet, and neither has *Disable in raids* inside a raid (its
 instance detection was checked in a battleground). The stubbed-API harness (`luajit tests/harness.lua
 BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
-the drawing area, the energy bar and the target-switch logic.
+the drawing area, the energy bar, the target-switch logic, the idle
+detach and wake, the raid and battleground settings and the self-check.
