@@ -138,6 +138,28 @@ local function UpdateType()
     UpdateCombo()
 end
 
+-- For /bs debug: everything the "hide when full" decision looks at.
+function ns.BarDebug()
+    local function V(f, ...)
+        local ok, v = pcall(f, ...)
+        if not ok then return "err" end
+        if issecretvalue and issecretvalue(v) then return "secret" end
+        return tostring(v)
+    end
+    local pt, tok = UnitPowerType("player")
+    return {
+        ("bar: shown=%s alpha=%.2f inCombat=%s InCombatLockdown=%s UnitAffectingCombat=%s"):format(
+            tostring(bar and bar:IsShown()), bar and bar:GetAlpha() or -1, tostring(inCombat),
+            tostring(InCombatLockdown()), V(UnitAffectingCombat, "player")),
+        ("bar: powerType=%s/%s (cached %s/%s) UnitPower=%s UnitPowerMax=%s UnitPower(no type)=%s"):format(
+            tostring(pt), tostring(tok), tostring(powerType), tostring(powerToken),
+            V(UnitPower, "player", powerType), V(UnitPowerMax, "player", powerType), V(UnitPower, "player")),
+        ("bar: hideFull=%s IsFull=%s lastCur(combo)=%s idle=%.2f combat=%.2f"):format(
+            tostring(ns.db.barHideFull), tostring(IsFull()), tostring(lastCur),
+            ns.db.barAlphaIdle, ns.db.barAlphaCombat),
+    }
+end
+
 -- Position, visibility and opacity from settings.
 function ns.ApplyBar()
     if not bar or not ns.db then return end

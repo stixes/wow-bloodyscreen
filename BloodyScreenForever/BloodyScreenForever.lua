@@ -573,6 +573,9 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         db.strict = (a == "on")
         Print("strict " .. a)
     elseif cmd == "debug" then
+        -- also kept in the saved variables (written on /reload), as chat can't be copied
+        db.debug = { date("%Y-%m-%d %H:%M:%S") }
+        local Print = function(msg) Print(msg); db.debug[#db.debug + 1] = msg end
         local ok, cur = pcall(UnitPower, "player", COMBO)
         local gcp = GetComboPoints and select(2, pcall(GetComboPoints, "player", "target"))
         Print(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s"):format(
@@ -586,6 +589,8 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         Print(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(
             tostring(WOW_PROJECT_ID), tostring((select(4, GetBuildInfo()))), vis, critCount, db.areaW, db.areaH,
             area:GetWidth(), area:GetHeight(), tostring(db.avoidCentre)))
+        if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Print(line) end end
+        Print("saved - /reload to write it to disk")
     else
         Help()
     end

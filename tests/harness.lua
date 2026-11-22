@@ -111,6 +111,7 @@ ns.db.areaW=10; ns.db.areaH=20; ns.ApplyLayout(); SlashCmdList.BLOODYSCREENFOREV
 local w=0 for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then w=math.max(w,t.w) end end
 check("size clamped to drawing area (10% of 1920 = 192): "..w, w==192)
 run(4.1); run(0.6); check("preview fades after 4s", vis()==0)
+date = date or os.date
 SlashCmdList.BLOODYSCREENFOREVER("debug"); SlashCmdList.BLOODYSCREENFOREVER("default"); SlashCmdList.BLOODYSCREENFOREVER("help")
 secret=true; mode("crit"); crit(); SlashCmdList.BLOODYSCREENFOREVER("debug")
 -- area % and avoid centre
