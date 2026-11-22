@@ -1,8 +1,12 @@
-# Proposal
+# Proposal: multiclass support (warrior and druid)
 
 ## Why
 
 Bloody Screen Forever was built around a rogue: combo points drive the splatters and the beads, and the energy bar hides when energy is full. A high-crit fury or arms warrior is just as much the audience, but today a warrior sees no splatters at all, because the default trigger is "Combo points". Saved variables are per account, so a warrior alt also inherits whatever trigger the rogue main chose. The energy bar never hides for a warrior either, because rage rests at empty, not full.
+
+Druids are the other half of the multiclass story, and the harder one: the right behaviour changes with the form. In cat form a druid plays like a rogue (energy, combo points); in bear form like a warrior (rage, crits); in caster form like any mana class. A single stored trigger can't serve all three, and today the beads show for any class the client reports a combo point maximum for.
+
+This change makes 0.18.0 a multiclass release: warrior and druid support alongside the existing rogue support.
 
 The code for this change is already in (commit `2eca616`, v0.18.0). It has not been tested in game or released. This change records the behaviour and carries the remaining verification and release work.
 
@@ -24,7 +28,7 @@ No new setting: Automatic is a new choice in the existing Trigger dropdown, and 
 
 Not yet measured in game (build 16001), and relied on:
 - `UnitClass` returns the class token (`WARRIOR`, `DRUID`, `ROGUE`) on Forever.
-- Cat form reports energy as the power type, and a form change fires the display-power event.
+- Cat form reports energy and bear form rage as the power type, and a form change fires the display-power event. None of the druid behaviour has been tested in game yet.
 - Warrior ability and auto-attack crits arrive as `UNIT_COMBAT` crits on the target, and the strict filter keeps them (auto-attack, or within 1.5 s of a cast).
 - Whether rage is readable or secret out of combat. Both cases are handled: compare it when readable, otherwise 3 s with no power change.
 

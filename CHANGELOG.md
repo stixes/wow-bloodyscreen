@@ -5,9 +5,10 @@ Each release reads its notes from the `## <version>` section matching
 
 ## 0.18.0
 
-For all my rogues and fury warriors out there: warriors are now first-class citizens.
+Multiclass support: warriors and druids join the rogues.
 
-* New default trigger, **Automatic**: combo points for rogues (and druids in cat form), crits for everyone else. Settings are shared across your characters, so your warrior alt gets crit splatters while your rogue keeps combo points. If you had "Combo points" selected, you're moved to Automatic, which works the same on a rogue.
+* New default trigger, **Automatic**: combo points for rogues and druids in cat form, crits for everyone else. Settings are shared across your characters, so your warrior alt gets crit splatters while your rogue keeps combo points. If you had "Combo points" selected, you're moved to Automatic, which works the same on a rogue.
+* Druids: combo points and beads in cat form, crit splatters in bear and caster forms, and the bar follows your form's power. Druid support hasn't been tested in game yet, so please report anything odd.
 * Combo point beads only show for rogues and druids in cat form.
 * The energy bar knows rage rests at empty: out of combat it hides once your rage has decayed, like energy at full. The setting is now called "Hide when idle out of combat".
 

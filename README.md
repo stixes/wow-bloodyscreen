@@ -1,17 +1,19 @@
 # Bloody Screen Forever
 
-**For all my rogues and fury warriors out there.**
+**For all my rogues, fury warriors and druids out there.**
 
 Bloody Screen Forever keeps your interface lean and puts the one number you
 watch where your eyes already are: a slim, translucent energy or rage bar
 right under your character, with combo points as little beads of blood for
-rogues. It fades away when you're idle and stays out of the way when you're
-not.
+rogues and cat-form druids. It fades away when you're idle and stays out of
+the way when you're not.
 
 And when the hits land, the screen shows it. Combo points and crits splatter
 blood across your view, then fade as quickly as they came. It's flavour for
 every crit-loving class: rogues build their splatters one combo point at a
-time, and a high-crit fury or arms warrior paints the screen with every crit.
+time, a high-crit fury or arms warrior paints the screen with every crit,
+and a druid gets whichever fits the form it's in (druid support is still
+untested in game).
 
 ## About this port
 
