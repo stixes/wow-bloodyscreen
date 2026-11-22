@@ -40,11 +40,14 @@ tools/gen_drops.py                    regenerate the bead textures
 tools/package.sh                      build the release zip (dist/)
 tools/release.sh                      upload to CurseForge (run by the release workflow)
 tools/forever-patch.sh                bump the TOC for a new Forever version
+tools/wow-api/                        fetch the WoW Forever API list for luacheck (update.sh, pin)
+tools/check-api-typos.sh              CI: check that luacheck catches API typos
 tools/hooks/                          Claude Code hooks: lint on edit, tests before commit, release-tag checks
 tools/check-openspec-archived.sh      release gate: no open OpenSpec changes
 .claude/agents/release-reviewer.md    clean-context pre-release review agent
 .luacheckrc                           luacheck config (WoW globals)
 tests/harness.lua                     stubbed-API test harness
+tests/api-typos.lua                   deliberate API typos luacheck must catch
 .github/workflows/                    CI, release on tag, Forever patch watch
 openspec/                             OpenSpec config, specs and change proposals
 ```
@@ -202,8 +205,17 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 ### Dev loop
 
 1. Edit `BloodyScreenForever/*.lua`.
-2. Lint: `luacheck BloodyScreenForever/` (config in `.luacheckrc`; add new WoW
-   API names to its `read_globals`, since an unknown global is usually a typo).
+2. Lint: `luacheck BloodyScreenForever/` from the repo root (config in
+   `.luacheckrc`). Run `tools/wow-api/update.sh` once first: it fetches the WoW
+   Forever API list (dumped from the client, Ketho/BlizzardInterfaceResources,
+   at the commit in `tools/wow-api/pin`) into `tools/wow-api/forever-api.lua`.
+   It's git-ignored and never committed, because the upstream data has no
+   licence. With it, luacheck checks every global and every `C_*`/`Enum` field
+   against what Forever really has. Without it, luacheck falls back to the
+   hand list in `.luacheckrc`. When you start using new API, add it to the
+   fallback list, and to the overlay too if the generated list lacks it (Lua
+   tables from Blizzard's UI such as `Settings`, constants). An unknown name is
+   usually a typo.
 3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every line
    should be `PASS`. It stubs the WoW API, including secret values, which error
    on any maths or comparison. Add checks for new behaviour: automate
@@ -229,7 +241,9 @@ started inside this repo):
   missing (see "Releasing").
 
 Both need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
-CI runs the same lint and harness.
+CI runs the same lint (always with the generated list) and harness, plus
+`tools/check-api-typos.sh`: `tests/api-typos.lua` holds deliberate typos that
+luacheck must all report, so a missing or broken list can't pass.
 
 ### Getting data out of the game
 
@@ -311,6 +325,13 @@ first login on the new build, `/reload` and read `selfcheck` in the saved
 variables: every line should be `ok` (or `unknown` for nil-at-login reads). PRs opened by
 the workflow don't trigger CI on their own; the tag's release run tests
 before uploading. Locally: `envchain curseforge tools/forever-patch.sh --check`.
+
+CI warns ("WoW API list is for interface …") when `## Interface` is newer
+than the API list in `tools/wow-api/pin`. Once the `forever` branch of
+Ketho/BlizzardInterfaceResources has the new build, run
+`tools/wow-api/update.sh --pin <sha>` with that commit, fix any luacheck
+findings (removed or renamed API), and commit the pin. It's a warning, not a
+failure, because the upstream dump can lag a patch by days.
 
 ### Planning changes (OpenSpec)
 
