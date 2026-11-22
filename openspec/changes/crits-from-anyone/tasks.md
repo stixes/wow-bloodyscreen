@@ -2,14 +2,14 @@
 
 ## 1. Crits from anyone (splatter-triggers)
 
-- [ ] 1.1 In `BloodyScreenForever.lua`, remove the strict check from the `UNIT_COMBAT` handler, keeping the target, secret (`Readable`) and `WOUND` + `CRITICAL` guards; remove `CAST_WINDOW`, `autoAttacking`/`autoRepeat`/`lastCast`, `stats.dropped`, the `UNIT_SPELLCAST_SUCCEEDED`, `PLAYER_ENTER_COMBAT`, `PLAYER_LEAVE_COMBAT`, `START_AUTOREPEAT_SPELL` and `STOP_AUTOREPEAT_SPELL` handlers and registrations, and the reset in `PLAYER_ENTERING_WORLD`; verify `grep -n "strict\|autoAttacking\|autoRepeat\|lastCast\|CAST_WINDOW" BloodyScreenForever/` finds nothing and luacheck is clean
-- [ ] 1.2 Harness: replace the two strict checks with "crit with no auto-attack or cast counts" (crit trigger and Automatic on a warrior) and keep "non-crit / non-target adds nothing"; drop or neutralise `fire()` calls for the removed events so the harness doesn't depend on them; verify `luajit tests/harness.lua BloodyScreenForever` exits 0, all PASS
-- [ ] 1.3 Update the file's header comment (crits come from hits the target takes, from anyone) and verify by reading it
+- [x] 1.1 In `BloodyScreenForever.lua`, remove the strict check from the `UNIT_COMBAT` handler, keeping the target, secret (`Readable`) and `WOUND` + `CRITICAL` guards; remove `CAST_WINDOW`, `autoAttacking`/`autoRepeat`/`lastCast`, `stats.dropped`, the `UNIT_SPELLCAST_SUCCEEDED`, `PLAYER_ENTER_COMBAT`, `PLAYER_LEAVE_COMBAT`, `START_AUTOREPEAT_SPELL` and `STOP_AUTOREPEAT_SPELL` handlers and registrations, and the reset in `PLAYER_ENTERING_WORLD`; verify `grep -n "strict\|autoAttacking\|autoRepeat\|lastCast\|CAST_WINDOW" BloodyScreenForever/` finds nothing and luacheck is clean (done: the only matches left are the settings-version comment and the retired-keys entry that 2.1 requires)
+- [x] 1.2 Harness: replace the two strict checks with "crit with no auto-attack or cast counts" (crit trigger and Automatic on a warrior) and keep "non-crit / non-target adds nothing"; drop or neutralise `fire()` calls for the removed events so the harness doesn't depend on them; verify `luajit tests/harness.lua BloodyScreenForever` exits 0, all PASS
+- [x] 1.3 Update the file's header comment (crits come from hits the target takes, from anyone) and verify by reading it
 
 ## 2. Remove the setting and command, migrate (splatter-triggers)
 
-- [ ] 2.1 Remove `strict` from `ns.DEFAULTS`, add it to the retired keys cleared in `ADDON_LOADED`, bump `SETTINGS_VERSION` to 10; verify a harness check that settings saved with `strict = true` and version 9 load as version 10 with no `strict` key and the trigger kept
-- [ ] 2.2 Remove the `/bs strict` branch and its help line; `/bs debug` prints `crits on target: seen=N shown=N secret-flag=N` without strict, autoattack or autorepeat fields; verify with harness checks that `/bs help` output has no "strict" and `/bs strict on` leaves crits counting, and read the debug line in the harness output
+- [x] 2.1 Remove `strict` from `ns.DEFAULTS`, add it to the retired keys cleared in `ADDON_LOADED`, bump `SETTINGS_VERSION` to 10; verify a harness check that settings saved with `strict = true` and version 9 load as version 10 with no `strict` key and the trigger kept
+- [x] 2.2 Remove the `/bs strict` branch and its help line; `/bs debug` prints `crits on target: seen=N shown=N secret-flag=N` without strict, autoattack or autorepeat fields; verify with harness checks that `/bs help` output has no "strict" and `/bs strict on` leaves crits counting, and read the debug line in the harness output
 
 ## 3. Wording around "your target is taking a beating"
 

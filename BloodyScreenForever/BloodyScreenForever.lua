@@ -13,9 +13,9 @@
 --   Combo points: UNIT_COMBO_POINTS is gone; GetComboPoints("player", "target")
 --   is polled, with UNIT_POWER_UPDATE telling hits from target switches.
 --   Crits: the combat log is closed to addons, so crits come from UNIT_COMBAT
---   ("target", "WOUND", "CRITICAL"). It carries no source, so instead of the
---   original's sourceGUID == player check, a crit counts only while you
---   auto-attack or within a moment of your own cast (/bs strict). Every read
+--   ("target", "WOUND", "CRITICAL"). It carries no source, so the original's
+--   sourceGUID == player check can't be made: every crit your target takes
+--   counts, whoever landed it (your target is taking a beating). Every read
 --   is secret-guarded.
 
 local ADDON, ns = ...
@@ -24,10 +24,9 @@ local PREFIX = "|cffb01010BloodyScreen|r: "
 local TEX_PATH = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Splatters\\Splatter"
 local SHAPES, STEPS = 5, 10
 local FADE_STEP = 0.05     -- s per pre-faded step: 10 steps = the original's 0.5 s fade
-local CAST_WINDOW = 1.5    -- s after your own cast during which a target crit counts
 local MAX_SLOTS = 20
 local CENTRE_ZONE = 0.20   -- "avoid the centre": centred zone, this share of screen width and height
-local SETTINGS_VERSION = 9
+local SETTINGS_VERSION = 10 -- 10: strict removed (crits from anyone)
 local MAX_OVERLAP = 0.10   -- splatters overlap by at most this share of the smaller one's width
 local BLOOD_RADIUS = 0.75  -- the blood fills roughly this share of a texture's half-size
 local PLACE_TRIES = 60
@@ -63,7 +62,6 @@ ns.DEFAULTS = {
     barAlphaCombat = 0.40, -- energy bar opacity in combat
     barAlphaIdle   = 0.15, -- and out of combat
     barHideFull    = true, -- hide the bar out of combat when power is at rest (full, or empty for rage) and no combo points
-    strict      = true,  -- crit attribution heuristic, see header
 }
 
 local db
@@ -106,8 +104,7 @@ local lastShown = -1    -- BS_LastTextureShown
 local globalTimer = 0   -- BS_GlobalTimer
 local previewUntil = 0
 local warnedSecret = false
-local autoAttacking, autoRepeat, lastCast = false, false, 0
-local stats = { crits = 0, counted = 0, secretFlag = 0, dropped = 0 }
+local stats = { crits = 0, counted = 0, secretFlag = 0 }
 
 -- BS_TextureFrame: the drawing area.
 local area = CreateFrame("Frame", "BloodyScreenForeverFrame", UIParent)
@@ -423,10 +420,6 @@ local function OnUnitCombat(unit, action, flagText)
     if flagText ~= "CRITICAL" then return end
     if Readable(action) and action ~= "WOUND" then return end -- heals, misses, etc.
     stats.crits = stats.crits + 1
-    if db.strict and not (autoAttacking or autoRepeat or GetTime() - lastCast <= CAST_WINDOW) then
-        stats.dropped = stats.dropped + 1
-        return
-    end
     stats.counted = stats.counted + 1
     OnCrit()
 end
@@ -451,8 +444,9 @@ function handlers.ADDON_LOADED(name)
         db.areaW, db.areaH, db.timer = nil, nil, nil
     end
     db.version = SETTINGS_VERSION
+    -- retired keys; "strict" since settings version 10 (every crit on the target counts)
     for _, k in ipairs({ "enabled", "alpha", "minAlpha", "maxAlpha", "minSize", "maxSize",
-        "linger", "fadeTime", "gap", "duration", "textures" }) do
+        "linger", "fadeTime", "gap", "duration", "textures", "strict" }) do
         db[k] = nil
     end
     for k, v in pairs(ns.DEFAULTS) do
@@ -473,7 +467,6 @@ end
 
 function handlers.PLAYER_ENTERING_WORLD()
     ns.ApplyLayout() -- screen size is final here (also resolves "auto")
-    autoAttacking, autoRepeat = false, false
 end
 
 function handlers.UNIT_POWER_UPDATE(_unit, token)
@@ -486,12 +479,6 @@ end
 function handlers.UNIT_COMBAT(...) OnUnitCombat(...) end
 function handlers.PLAYER_TARGET_CHANGED() OnTargetChanged() end
 
-function handlers.UNIT_SPELLCAST_SUCCEEDED() lastCast = GetTime() end
-function handlers.PLAYER_ENTER_COMBAT() autoAttacking = true end   -- melee auto-attack on
-function handlers.PLAYER_LEAVE_COMBAT() autoAttacking = false end
-function handlers.START_AUTOREPEAT_SPELL() autoRepeat = true end   -- auto shot / wand
-function handlers.STOP_AUTOREPEAT_SPELL() autoRepeat = false end
-
 area:SetScript("OnEvent", function(_, event, ...)
     local h = handlers[event]
     if h then h(...) end
@@ -503,13 +490,12 @@ function handlers.UNIT_DISPLAYPOWER()
 end
 handlers.UI_SCALE_CHANGED = handlers.DISPLAY_SIZE_CHANGED
 
-for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED", "UNIT_COMBAT", "PLAYER_ENTER_COMBAT",
-    "PLAYER_LEAVE_COMBAT", "START_AUTOREPEAT_SPELL", "STOP_AUTOREPEAT_SPELL" }) do
+for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "DISPLAY_SIZE_CHANGED",
+    "UI_SCALE_CHANGED", "UNIT_COMBAT" }) do
     area:RegisterEvent(e)
 end
 area:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
 area:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
-area:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 
 ---------------------------------------------------------------------------
 -- /bs trace: print every change in the combo point sources and every combo
@@ -594,13 +580,12 @@ local function Help()
     print("  /bs reset          - restore defaults")
     print("  /bs debug          - combo point read and crit counters")
     print("  /bs trace          - log combo point sources and events to chat (toggle)")
-    print("  /bs strict on|off  - crits only while you auto-attack or just after your cast (default on)")
 end
 
 SLASH_BLOODYSCREENFOREVER1 = "/bs"
 SLASH_BLOODYSCREENFOREVER2 = "/bloodyscreen"
 SlashCmdList.BLOODYSCREENFOREVER = function(msg)
-    local cmd, a = strsplit(" ", strtrim(msg or ""):lower())
+    local cmd = strsplit(" ", strtrim(msg or ""):lower())
     if cmd == nil or cmd == "" then
         if not (ns.OpenOptions and ns.OpenOptions()) then Help() end
     elseif cmd == "test" then
@@ -612,9 +597,6 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         ns.ApplyLayout()
         if ns.ApplyBar then ns.ApplyBar() end
         Print("Default settings restored.")
-    elseif cmd == "strict" and (a == "on" or a == "off") then
-        db.strict = (a == "on")
-        Print("strict " .. a)
     elseif cmd == "debug" then
         -- also kept in the saved variables (written on /reload), as chat can't be copied
         db.debug = { date("%Y-%m-%d %H:%M:%S") }
@@ -624,9 +606,8 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         Log(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s (in effect: %s)"):format(
             tostring(ok), tostring(IsSecret(cur)), IsSecret(cur) and "?" or tostring(cur),
             IsSecret(gcp) and "?" or tostring(gcp), db.mode, tostring(mode)))
-        Log(("crits on target: seen=%d shown=%d dropped(strict)=%d secret-flag=%d | autoattack=%s autorepeat=%s strict=%s"):format(
-            stats.crits, stats.counted, stats.dropped, stats.secretFlag,
-            tostring(autoAttacking), tostring(autoRepeat), tostring(db.strict)))
+        Log(("crits on target: seen=%d shown=%d secret-flag=%d"):format(
+            stats.crits, stats.counted, stats.secretFlag))
         local vis = 0
         for i = 0, db.max - 1 do if Visible(i) then vis = vis + 1 end end
         Log(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(

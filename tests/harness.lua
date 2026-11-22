@@ -99,15 +99,17 @@ check("combo 5 points -> 5 visible, slot shapes 1..5 at step 1: "..shapes(), vis
 cp(2); run(0.6); check("combo spend to 2 -> 2 visible after 0.5s fade", vis()==2)
 cp(0); run(0.2); check("mid-fade still visible", vis()==2); run(0.4); check("combo 0 -> none", vis()==0)
 -- crit (until combat ends)
-mode("crit"); inCombatFlag=true; fire("PLAYER_ENTER_COMBAT")
+mode("crit"); inCombatFlag=true
 for i=1,12 do crit() end; run(0.1)
 check("crit: 12 crits -> capped at max 10", vis()==10)
 inCombatFlag=false; for k=1,8 do run(0.1); io.write(vis()," ") end print(); check("crit: out of combat -> all faded", vis()==0)
--- strict
-fire("PLAYER_LEAVE_COMBAT"); inCombatFlag=true; crit(); run(0.02); check("strict drops crit without autoattack/cast", vis()==0)
-fire("UNIT_SPELLCAST_SUCCEEDED","player"); crit(); run(0.02); check("crit right after own cast counts", vis()==1)
+-- crits from anyone: no auto-attack or cast needed; only crits on the target count
+inCombatFlag=true; crit(); run(0.02); check("crit with no auto-attack or cast counts", vis()==1)
+fire("UNIT_COMBAT","target","WOUND","",1234,1); run(0.02); check("non-crit hit on target adds nothing", vis()==1)
+fire("UNIT_COMBAT","focus","WOUND","CRITICAL",1234,1); run(0.02); check("crit on a unit that isn't the target adds nothing", vis()==1)
+fire("UNIT_COMBAT","target","HEAL","CRITICAL",1234,1); run(0.02); check("critical heal on target adds nothing", vis()==1)
 -- crittimed (timer 7 from migration)
-mode("crittimed"); fire("PLAYER_ENTER_COMBAT"); crit(); run(3); crit(); run(2.7)
+mode("crittimed"); crit(); run(3); crit(); run(2.7)
 check("crittimed: first faded after 5s, second still up", vis()==1); run(3.5); check("crittimed: second gone", vis()==0)
 -- critshared
 mode("critshared"); crit(); run(4); crit(); run(4); check("critshared: timer restarted by 2nd crit", vis()==2)
@@ -279,11 +281,11 @@ check("warrior: combo bead row hidden", barState.row and not barState.row:IsShow
 power = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1)
 check("auto, warrior: combo points ignored", vis() == 0)
 secret = false -- an earlier check left crit flags secret
-fire("PLAYER_ENTER_COMBAT"); crit(); run(0.1); crit(); run(0.1)
-check("auto, warrior: crits splatter (2)", vis() == 2)
+crit(); run(0.1); crit(); run(0.1)
+check("auto, warrior: crits splatter (2), no auto-attack needed", vis() == 2)
 run(ns.db.timer + 1)
 check("auto, warrior: crit splatters fade after the timer", vis() == 0)
-fire("PLAYER_LEAVE_COMBAT"); power = 0
+power = 0
 
 inCombatFlag = false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
 rage = 0; run(0.1); check("warrior: rage empty out of combat -> bar hidden", barState.alpha == 0)
@@ -303,6 +305,26 @@ power = 0
 playerClass, ptype, ptoken = "ROGUE", 3, "ENERGY"
 fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
 check("rogue: combo bead row shown", barState.row:IsShown())
+
+-- crits from anyone: /bs help has no strict, and the old command changes nothing
+local printed = {}
+local realPrint = print
+print = function(...) printed[#printed+1] = table.concat({tostringall and tostringall(...) or ...}, " ") end
+SlashCmdList.BLOODYSCREENFOREVER("help")
+print = realPrint
+local helpText = table.concat(printed, "\n")
+check("/bs help: no strict command listed", #printed > 0 and not helpText:lower():find("strict"))
+playerClass, ptype, ptoken = "WARRIOR", 1, "RAGE"; secret = false
+fire("UNIT_DISPLAYPOWER", "player"); run(0.1); ns.ClearNow()
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("strict on"); print = realPrint
+crit(); run(0.02)
+check("/bs strict on: crits still splatter, no strict key saved", vis() == 1 and ns.db.strict == nil)
+
+-- settings version 10: a saved strict value is dropped, the trigger kept
+BloodyScreenForeverDB = { mode="critshared", strict=true, max=6, version=9 }
+fire("ADDON_LOADED","BloodyScreenForever")
+check("migration 9 -> 10: strict dropped, trigger and max kept",
+    ns.db.version == 10 and ns.db.strict == nil and ns.db.mode == "critshared" and ns.db.max == 6)
 
 if failures > 0 then
     print(("%d check(s) failed"):format(failures))
