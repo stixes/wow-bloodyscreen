@@ -27,9 +27,9 @@ context: |
   for Lua, a full restart for new texture files). Diagnostics go through /bs debug
   and /bs trace into the saved variables, which are read only when the user asks.
 
-  Releases: bump ## Version in the TOC, add a "## <version>" CHANGELOG.md section,
-  then a pushed v<version> tag publishes to CurseForge and GitHub. Pushing and
-  tagging need the user's go-ahead. Public repo: no personal paths, account names
+  Releases are outside OpenSpec changes: a release may bundle several changes and
+  happens only when the user asks (a pushed v<version> tag publishes to CurseForge
+  and GitHub). Public repo: no personal paths, account names
   or emails in committed files; no Feador/Resike art.
 
 rules:
@@ -46,3 +46,4 @@ rules:
     - Include harness checks for the new behaviour
     - Include a CHANGELOG.md entry and a TOC version bump for anything user-visible
     - End with an in-game check list for the user (what to do, what they should see)
+    - No release tasks (version type, push, tag, publish); releasing is separate from changes

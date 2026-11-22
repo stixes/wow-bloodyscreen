@@ -61,4 +61,4 @@ Automatic resolves to exactly the combo trigger for a rogue, so the migration ch
 ## Migration Plan
 
 - The settings migration runs on first load of 0.18.0 (version 8 → 9); there's nothing for the player to do.
-- Release through the tag workflow after the in-game check. If something breaks in game, a fix goes out as 0.18.1. Rolling back means reinstalling 0.17.0 from CurseForge; the migrated `auto` value is unknown to 0.17.0 and falls back to its default ("combo"), so a downgrade is safe.
+- Rolling back means reinstalling 0.17.0 from CurseForge; the migrated `auto` value is unknown to 0.17.0 and falls back to its default ("combo"), so a downgrade is safe.

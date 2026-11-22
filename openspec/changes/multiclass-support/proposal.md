@@ -8,7 +8,7 @@ Druids are the other half of the multiclass story, and the harder one: the right
 
 This change makes 0.18.0 a multiclass release: warrior and druid support alongside the existing rogue support.
 
-The code for this change is already in (commit `2eca616`, v0.18.0). It has not been tested in game or released. This change records the behaviour and carries the remaining verification and release work.
+The code for this change is already in (commit `2eca616`, v0.18.0). It has not been tested in game or released. This change records the behaviour and carries the remaining in-game verification.
 
 ## What Changes
 
@@ -50,4 +50,3 @@ None. `openspec/specs/` is empty, and this is the first change recorded with Ope
 - Saved variables: settings version 8 → 9; `mode = "combo"` migrates to `"auto"`.
 - Tests: `tests/harness.lua` gains class and power-type stubs and checks for rogue, warrior and druid.
 - Docs: README pitch and settings table, `CHANGELOG.md` 0.18.0, TOC notes and version.
-- Release: 0.18.0 to CurseForge and GitHub through the tag workflow, after the in-game check.

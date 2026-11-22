@@ -25,15 +25,9 @@ Set up first: uninstall the CurseForge copy in the CurseForge app, restore the d
 - [x] 4.1 Rogue: open `/bs`. The Trigger shows "Automatic" (migrated from Combo points) and the hide setting reads "Hide when idle out of combat". In a fight, splatters follow combo points as before, crits add none, and the beads show and follow target switches.
 - [x] 4.2 Warrior (or any non-rogue): `/bs debug` prints "mode=auto (in effect: crittimed)". In a fight, each crit splatters, and each splatter fades about 5 s after it appeared. No beads under the bar; the bar is red (rage).
 - [x] 4.3 Warrior out of combat: once rage has decayed to 0, the bar disappears within about 3 s. It shows again on entering combat. With the hide setting off, it stays visible at the out-of-combat opacity.
-- [ ] 4.4 Druid: in cat form, beads and combo splatters. Shift to bear: splatters clear, beads disappear, and crits splatter. Shift back: beads return. **Not tested (no druid available, 2026-11-22). Released as untested; the CHANGELOG and README say so.**
+- [ ] 4.4 Druid: in cat form, beads and combo splatters. Shift to bear: splatters clear, beads disappear, and crits splatter. Shift back: beads return. **Not tested (no druid available, 2026-11-22). It ships as untested; the CHANGELOG and README say so.**
 - [x] 4.5 If anything is off, run `/bs debug`, then `/reload`, and ask for the saved variables to be read. Fix as 0.18.0 (still unreleased), and add harness checks for whatever was missed. (4.1-4.3 passed; nothing to fix.)
-
-## 5. Release
-
-- [ ] 5.1 Decide the release type: `0.18.0` (release) or `0.18.0-beta1` (beta; change `## Version` in the TOC and the CHANGELOG.md heading to match, then commit)
-- [ ] 5.2 With the user's go-ahead, push `main` and the tag `v<version>`. Verify that the Release workflow succeeds and that the GitHub release and the CurseForge file (pending moderation) both exist.
 
 ## Workflow follow-up
 
-- Archive this change (`/openspec-archive-change`) once 4.x and 5.x are done; this creates `openspec/specs/splatter-triggers`, `combo-beads` and `energy-bar`.
-- Optionally update the CurseForge project description with the README pitch (website only, not the upload API).
+- Archive this change (`/openspec-archive-change`) once 4.x is done; this creates `openspec/specs/splatter-triggers`, `combo-beads` and `energy-bar`. Releasing is not part of the change; it happens separately when the user asks.

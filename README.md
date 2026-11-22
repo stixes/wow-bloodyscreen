@@ -260,6 +260,8 @@ Claude Code skills are installed machine-wide, so the repo only carries
 - Flow: `/openspec-explore` (optional) → `/openspec-propose "<idea>"` →
   review → `/openspec-apply-change` → test in game → `/openspec-archive-change`,
   which merges the change's delta specs into `openspec/specs/`.
+- Releasing is not part of a change: a release can bundle several changes and
+  happens only when the user asks (see "Releasing" above).
 - `openspec/specs/` starts empty and grows one archived change at a time.
   Don't backfill specs for code that isn't changing.
 - CI runs `openspec validate --all --strict`.
