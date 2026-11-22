@@ -5,8 +5,9 @@
 #
 # Reads from the TOC: ## Version, ## Interface (-> game version, 16001 -> 1.60.1)
 # and ## X-Curse-Project-ID. Release notes come from CHANGELOG.md's
-# "## <version>" section. Needs CF_API_TOKEN (CurseForge author portal ->
-# API tokens), injected by envchain; the token is never printed.
+# "## <version>" section. Needs the CurseForge API token (author portal ->
+# API tokens) as CF_API_TOKEN or API_TOKEN, injected by envchain (namespace
+# curseforge holds API_TOKEN); the token is never printed.
 # Steps: checks -> zip (tools/package.sh) -> game version id -> upload -> git tag v<version>.
 # --dry-run does everything except the upload and the tag.
 set -euo pipefail
@@ -54,9 +55,10 @@ echo "zip:      $zip"
 echo "notes:"; sed 's/^/  | /' <<<"$notes"
 
 api="https://wow.curseforge.com/api"
+CF_API_TOKEN=${CF_API_TOKEN:-${API_TOKEN:-}}
 if [[ -z "${CF_API_TOKEN:-}" ]]; then
     [[ $dry -eq 1 ]] && { echo "dry run: no CF_API_TOKEN, skipping game version lookup and upload"; exit 0; }
-    die "CF_API_TOKEN is not set - run via: envchain curseforge $0 $*"
+    die "no API token (CF_API_TOKEN or API_TOKEN) - run via: envchain curseforge $0 $*"
 fi
 
 # game version id by name; the token goes in through a curl config on stdin, not argv

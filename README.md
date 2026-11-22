@@ -139,7 +139,7 @@ The script refuses to run with uncommitted changes, a version that's already
 tagged, or a missing changelog section. It builds the zip from committed files,
 finds CurseForge's game version for the TOC's Interface (16001 → 1.60.1),
 uploads through the CurseForge upload API and tags `v<version>`. The token is
-`CF_API_TOKEN` in the `curseforge` envchain namespace. It goes to curl through
+`API_TOKEN` in the `curseforge` envchain namespace (`CF_API_TOKEN` also works). It goes to curl through
 stdin and never appears on the command line.
 
 ## Credits and licence
