@@ -58,8 +58,8 @@ When one or more parts are switched off at login, the addon SHALL print exactly 
 - **WHEN** a patch breaks both the energy bar and the settings panel
 - **THEN** one line is printed, naming the energy bar and the settings panel as off
 
-### Requirement: Each broken part is announced once per game build
-Each switched-off part SHALL be announced at most once per game build, across all characters on the account. Later logins on the same build SHALL print nothing about it while the part stays off. After the game build changes, the checks' findings SHALL be announced again.
+### Requirement: Each broken part is announced once per game build and addon version
+Each switched-off part SHALL be announced at most once per game build and addon version, across all characters on the account. Later logins on the same build and version SHALL print nothing about it while the part stays off. After the game build or the addon version changes, the checks' findings SHALL be announced again.
 
 #### Scenario: Next login on the same build
 - **WHEN** the player logs in again on the same build and the energy bar is still broken
@@ -67,6 +67,10 @@ Each switched-off part SHALL be announced at most once per game build, across al
 
 #### Scenario: Game patched
 - **WHEN** the game build changes and the energy bar is still broken
+- **THEN** the one-line message is printed again on the first login
+
+#### Scenario: Addon updated
+- **WHEN** the addon is updated to a new version on the same game build and the energy bar is still broken
 - **THEN** the one-line message is printed again on the first login
 
 #### Scenario: Part the character doesn't use

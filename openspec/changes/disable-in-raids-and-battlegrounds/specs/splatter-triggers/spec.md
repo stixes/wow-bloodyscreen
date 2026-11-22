@@ -55,20 +55,24 @@ The settings panel SHALL offer a "Disable in battlegrounds" checkbox in the Bloo
 - **WHEN** the player ticks "Disable in raids" and runs `/bs reset`
 - **THEN** it is unticked again
 
-### Requirement: "Disable in battlegrounds" is off by default
-"Disable in battlegrounds" SHALL be unticked for new installs, after `/bs reset`, and for players upgrading from a version without it.
+### Requirement: "Disable in battlegrounds" is on by default
+"Disable in battlegrounds" SHALL be ticked for new installs, after `/bs reset`, and for players upgrading from a version without it. A player's saved choice to untick it SHALL be kept across reloads and upgrades.
 
 #### Scenario: Fresh install
 - **WHEN** the addon loads with no saved settings
-- **THEN** "Disable in battlegrounds" is unticked
+- **THEN** "Disable in battlegrounds" is ticked
 
 #### Scenario: Upgrade
 - **WHEN** a player upgrades from a version without the setting
-- **THEN** "Disable in battlegrounds" is unticked and every other saved setting is kept
+- **THEN** "Disable in battlegrounds" is ticked and every other saved setting is kept
+
+#### Scenario: Unticked stays unticked
+- **WHEN** a player unticks "Disable in battlegrounds" and reloads or upgrades
+- **THEN** it is still unticked
 
 #### Scenario: Reset
-- **WHEN** the player ticks "Disable in battlegrounds" and runs `/bs reset`
-- **THEN** it is unticked again
+- **WHEN** the player unticks "Disable in battlegrounds" and runs `/bs reset`
+- **THEN** it is ticked again
 
 ### Requirement: Splatters stop at once when the setting takes effect
 When a disable setting starts to apply (the player enters the instance, or ticks the box while inside), splatters on screen SHALL be cleared. When it stops applying (the player leaves, or unticks the box), the trigger in effect SHALL work again from the next event, with no splatters carried over.

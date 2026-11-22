@@ -21,7 +21,7 @@ Classes and power types affected: all of them, with no visible difference.
 No new setting. This is an internal saving with no trade-off for the player to choose.
 
 Relies on, not yet measured in game (build 16001):
-- Out of combat, combo points on the target only change without an event right after a target switch or a loading screen, and the late count arrives within the settle window (3 s; measured ~0.9 s in combat). Neither the out-of-combat switch nor the loading screen has been traced; the tasks start with a `/bs trace` run (no code change) to measure it.
+- Out of combat, combo points on the target only change without an event right after a target switch or a loading screen, and the late count arrives within the settle window (3 s; measured ~0.9 s in combat). Neither the out-of-combat switch nor the loading screen has been traced; the one in-game check measures it with the existing `/bs trace`, alongside implementation; if the count is slower, only the settle window value changes.
 - Gaining a combo point always fires `UNIT_POWER_UPDATE` with `COMBO_POINTS`, except possibly when the stale `UnitPower` value happens not to change (switch, then hit the new target back to the old count). That case starts or continues combat, where the poll keeps running, so it is covered either way; a `/bs trace` run can confirm it.
 
 ## Capabilities

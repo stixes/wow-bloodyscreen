@@ -24,7 +24,7 @@ The bar is also already free when "Show energy bar" is off (`bar:SetShown(false)
 
 **Goals:**
 - Zero `OnUpdate` calls from this addon while idle: out of combat (or in combat for non-combo characters), nothing shown, nothing pending.
-- The same visible behaviour, proven by the existing harness checks passing with unchanged expectations. The one theoretical difference (a combo count arriving out of combat more than 3 s after a switch or loading screen) is listed under Risks and measured first (decision 7).
+- The same visible behaviour, proven by the existing harness checks passing with unchanged expectations. The one theoretical difference (a combo count arriving out of combat more than 3 s after a switch or loading screen) is listed under Risks and measured alongside implementation (decision 7).
 
 **Non-Goals:**
 - Making in-combat polling cheaper for rogues and cat druids (it stays as today).
@@ -67,7 +67,7 @@ busy = (not inCombat and now - lastPowerChange < QUIET)        -- quiet test not
 
 **Secret values:** neither predicate reads power. They use timestamps, booleans, frame visibility, `lastCur` (already a guarded, readable number or nil) and, for `InCombat()`, `UnitAffectingCombat` behind the existing `Readable()` guard. No new read of a possibly secret value is added.
 
-### 3. Combo characters keep polling for all of combat
+### 3. Combo characters keep polling for all of combat (confirmed by the owner)
 
 `InCombat()` in the splatter file is `inCombat or (Readable(uac) and uac)` with `uac = UnitAffectingCombat("player")`, the same either-signal test `OnUnitCombat` uses. The bar uses its `inCombat` (REGEN events, seeded at `PLAYER_ENTERING_WORLD`).
 
@@ -97,13 +97,13 @@ Bar: wake at the top of its own `OnEvent` (it only registers player power events
 
 Each frame wakes only from its own events, matching how the harness feeds them separately (`fire` for the splatter frame, `barState.onEvent` for the bar).
 
-### 6. `/bs debug` shows the state
+### 6. `/bs debug` shows the state (confirmed by the owner)
 
 One extra line, e.g. `idle: splatters=running|idle bar=running|idle`, from the two `awake` flags (the bar's exported via `ns.BarDebug`). This is the in-game check for the feature and a diagnostic if a splatter ever sticks. The line goes into the saved `debug` table like the others. Nothing new is read from the game; the measurement that matters uses the existing `/bs trace` (decision 7).
 
-### 7. Measure the out-of-combat late count first
+### 7. Measure the out-of-combat late count alongside implementation
 
-The settle window is the one assumption no kept poll covers: out of combat, after a target switch (or a loading screen), the new count must arrive within 3 s. The ~0.9 s figure was traced in combat. Before (or at the latest alongside) implementation, the user runs the existing `/bs trace` with no code change: out of combat, put points on mob A, switch to mob B and back to A, then `/reload` with points on a target; stop the trace and read it. Pass: each `GetComboPoints(player,target) = N` line lands under 3 s after its `PLAYER_TARGET_CHANGED` (or the trace start). If it does not, raise `COMBO_SETTLE` to cover the measured delay with margin before implementing.
+The settle window is the one assumption no kept poll covers: out of combat, after a target switch (or a loading screen), the new count must arrive within 3 s. The ~0.9 s figure was traced in combat. The measurement uses the existing `/bs trace` and is folded into the single in-game check (tasks 6.1); it runs alongside implementation, not before it. Pass: each `GetComboPoints(player,target) = N` line lands under 3 s after its `PLAYER_TARGET_CHANGED` (or the trace start after a reload). If it lands later, only `ns.COMBO_SETTLE` changes, to the measured delay plus margin.
 
 ### 8. Harness
 

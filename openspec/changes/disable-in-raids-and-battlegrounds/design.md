@@ -13,7 +13,7 @@ Settings: `SETTINGS_VERSION = 10`. `ADDON_LOADED` fills every `ns.DEFAULTS` key 
 ## Goals / Non-Goals
 
 **Goals:**
-- Two independent switches, splatters only, with no change for anyone who leaves them off.
+- Two independent switches, splatters only; outside battlegrounds and arenas nothing changes unless the raid box is ticked.
 - One place that decides "disabled here", so no trigger path can miss it.
 - Every read of the instance API guarded; a missing or unreadable API means "not disabled".
 
@@ -44,8 +44,12 @@ The read follows the `GetComboPoints` pattern: skip if `IsInInstance` is nil, `p
 - The two checkboxes' change callbacks: same call, exposed as `ns.RecheckZone()` so `Options.lua` and the harness can use it (the harness's `Settings` stub swallows callbacks).
 - No `GROUP_ROSTER_UPDATE`: group membership doesn't matter with instance-type detection.
 
-### Settings: two booleans, defaults off, no version bump
-`ns.DEFAULTS.offInRaids = false`, `ns.DEFAULTS.offInBattlegrounds = false`. Off because the owner asked for "safe defaults" and off is the reading that changes nothing for existing players and stays faithful to the original (which had no such rule); flipping a default is a one-line change (owner question). The defaults loop adds the keys to old tables and `/bs reset` covers them; nothing is renamed, retired or reinterpreted, so `SETTINGS_VERSION` stays 10.
+### Settings: two booleans, raids off and battlegrounds on, no version bump
+`ns.DEFAULTS.offInRaids = false`, `ns.DEFAULTS.offInBattlegrounds = true` (owner's decision). What a default-on key means for the existing code:
+- Upgrade: the defaults loop in `ADDON_LOADED` sets a key only when it is `nil`, so old tables gain `offInBattlegrounds = true` (the intended behaviour change, announced in the CHANGELOG), and a saved `false` is never overwritten on later loads. No migration code or version check is needed, so `SETTINGS_VERSION` stays 10.
+- `/bs reset` copies `ns.DEFAULTS`, so it ticks the battleground box again; that is what reset means.
+- `Settings.RegisterAddOnSetting` gets the default from `ns.DEFAULTS` through `Setting()`, so the panel's own reset agrees.
+- The harness starts outside any instance, so the existing checks are unaffected; the new checks set the box explicitly where independence is tested.
 
 ### Panel: under "Blood splatters"
 Two `Settings.CreateCheckbox` calls after "Avoid the centre" and before the Preview button, each with a callback to `ns.RecheckZone`. They sit in the splatter section so the labels "Disable in raids" / "Disable in battlegrounds" read as "disable the splatters". Tooltips: "No blood splatters inside raid instances. The energy bar stays." and "No blood splatters inside battlegrounds (and arenas). The energy bar stays." `Check()` isn't reused: it is local to the Energy bar section and calls `ApplyBar`.
@@ -66,15 +70,15 @@ Entering or leaving through a loading screen clears splatters (existing `PLAYER_
 
 ## Migration Plan
 
-- No migration code; first load adds both keys as `false`, settings version stays 10.
+- No migration code; first load adds `offInRaids = false` and `offInBattlegrounds = true`; settings version stays 10. Players who don't want the battleground default untick it once (CHANGELOG says where).
 - Downgrade: older versions ignore the two keys (no retired-keys entry clears them, and no code reads them), so they come back unchanged on re-upgrade.
 
-## Questions for the owner
+## Owner decisions
 
-These shape defaults and scope; the plan uses the conservative answer shown, and each flip is a small edit to one requirement and one line of code.
+Settled with the owner after the first draft:
 
-1. Defaults: both off (planned). Recommendation: off, so nobody's game changes without a tick; on for raids is the alternative if the blood wall in raids should be fixed out of the box.
-2. Scope: splatters only, bar and beads untouched (planned, recommended).
-3. Triggers covered: all triggers, combo points included (planned, recommended: the label says "disable").
-4. Raid group outside an instance: not covered (planned, recommended: keeps the battleground box independent and the rule simple).
-5. Arenas under the battleground box (planned, recommended). And if Forever turns out to have no battlegrounds: keep the box (recommended, it costs nothing and covers future content) or drop it.
+1. Defaults: "Disable in raids" off, "Disable in battlegrounds" on (existing players get it on at upgrade; CHANGELOG says so).
+2. Scope: splatters only; the energy bar and beads are untouched.
+3. Triggers: all of them, combo points included.
+4. A raid group outside an instance doesn't count.
+5. Arenas count under the battleground box, and the box stays even if Forever has no battlegrounds.

@@ -1,9 +1,5 @@
 # Tasks
 
-## 0. Measure first (in game, existing `/bs trace`, no code change)
-
-- [ ] 0.1 Out of combat on a rogue: `/bs trace`, put combo points on mob A, target mob B, then A again, wait 3 s each time; then `/reload` with points on a target and `/bs trace` again right after; stop the trace, `/reload`, ask for the saved variables to be read. Pass: every `GetComboPoints(player,target) = N` line lands under 3 s after its `PLAYER_TARGET_CHANGED` (or after the trace start following the reload). If not, set `COMBO_SETTLE` in 2.1 to the measured delay plus margin
-
 ## 1. Harness first (so the existing behaviour is pinned before the code moves)
 
 - [ ] 1.1 `tests/harness.lua` `run()`: call `scripts.OnUpdate()` only when it is non-nil (the bar call is already guarded); verify `luajit tests/harness.lua BloodyScreenForever` is still all PASS on the unchanged addon
@@ -11,7 +7,7 @@
 
 ## 2. Splatter script (BloodyScreenForever.lua)
 
-- [ ] 2.1 Add `ns.COMBO_SETTLE = 3` (s after a target switch in which the late combo count is still polled, design decision 4) and an `InCombat()` helper: `inCombat` or a `Readable()` true `UnitAffectingCombat("player")`; and a local `settleStart`, set in `handlers.PLAYER_TARGET_CHANGED` and `handlers.PLAYER_ENTERING_WORLD` (separate from `lastTargetSwitch`, which drives the crossfade; design decision 4); verify luacheck clean
+- [ ] 2.1 Add `ns.COMBO_SETTLE = 3` (the only value to change if the in-game trace in 6.1 measures a slower late count; s after a target switch in which the late combo count is still polled, design decision 4) and an `InCombat()` helper: `inCombat` or a `Readable()` true `UnitAffectingCombat("player")`; and a local `settleStart`, set in `handlers.PLAYER_TARGET_CHANGED` and `handlers.PLAYER_ENTERING_WORLD` (separate from `lastTargetSwitch`, which drives the crossfade; design decision 4); verify luacheck clean
 - [ ] 2.2 Move the `OnUpdate` body into a local `AreaUpdate` that uses the `area` upvalue, add `awake`, `Wake()` and `Sleep()` (design decision 1), forward-declared near the top (like `PlaceSplatter`) because `ShowSlot`, `DetachAll` and `ClearNow` are defined above the handler; don't attach at creation; `if not db then Sleep() return end`; at the end of a full pass, `Sleep()` when the busy predicate (design decision 2) is false; verify the harness's existing checks all PASS with unchanged expectations
 - [ ] 2.3 Wake in `ShowSlot`, `DetachAll`, `ClearNow`, `handlers.PLAYER_TARGET_CHANGED`, `handlers.PLAYER_ENTERING_WORLD` and `handlers.PLAYER_REGEN_DISABLED`, not in the generic event dispatcher (design decision 5); verify the invariant from 1.2 still reports 0 violations and every existing check PASSes
 - [ ] 2.4 Update the header comment ("polled" → polled while a splatter is shown, in combat or just after a target switch); verify by reading it
@@ -41,16 +37,19 @@ Append them at the end of the harness, before the failures summary. The end stat
 - [ ] 5.7 Bar quiet period: idle bar, a power event (`energy=80`) wakes it and shows it at idle opacity; `energy=100` + event, `run(3.1)` → alpha 0 and `barState.onUpdate == nil`
 - [ ] 5.8 Settings: `ns.ApplyBar()` while idle reattaches the bar poll, which detaches again on its next 0.05 s tick (ApplyBar touches neither the quiet nor the settle timestamp); changing the trigger (`mode(...)`, which calls `ClearNow`) reattaches the splatter script for one pass, then it detaches
 - [ ] 5.10 Loading screen: rogue idle, `fire("PLAYER_ENTERING_WORLD")` + bar event, then `GetComboPoints` goes 0 → 2 after 1 s with no event → 2 beads and 2 splatters, both scripts attached until the points go and the settle window passes
+- [ ] 5.11 Settle window edge: a late eventless count arriving at `ns.COMBO_SETTLE - 0.1` s after an out-of-combat switch is still picked up (beads and splatters); the scripts detach once `ns.COMBO_SETTLE` has passed with 0 points
+- [ ] 5.12 Idle debug line: in the idle state of 5.1, `/bs debug` prints `idle: splatters=idle bar=idle`; right after a crit in combat it prints `splatters=running` (extends 4.1)
+- [ ] 5.13 Trace stays free: capture the `/bs trace` frame in the `CreateFrame` stub; it is hidden (so gets no OnUpdate) before `/bs trace`, shown while tracing, hidden again after the second `/bs trace`
+- [ ] 5.14 Crit and bar behaviour unchanged with the scripts idling between events: rerun the existing warrior checks (crit splatters, timer fade, rage bar hide/show) after an idle stretch (`run(ns.COMBO_SETTLE + 1)` with nothing shown) and they give the same results
 - [ ] 5.9 Run the full suite: `luacheck BloodyScreenForever/` clean and `luajit tests/harness.lua BloodyScreenForever` all PASS, with no existing check's expectation edited; `openspec validate idle-no-cost --strict` passes
 
-## 6. In-game checks (only what needs the real game)
+## 6. In-game check (only what needs the real game)
 
-- [ ] 6.1 Idle: `/reload`, stand out of combat at full power with no target for 5 s, `/bs debug` → `idle: splatters=idle bar=idle`
-- [ ] 6.2 Rogue (or cat druid): fight a mob, build points, switch targets in combat and back, kill it: beads and splatters behave as before (instant on hits, crossfade on switches, fade out after). Out of combat, switch between two mobs you put points on: beads and splatters follow each switch as before (timing measured in 0.1). Then `/bs debug` a few seconds after combat → both idle
-- [ ] 6.3 Warrior (or any crit character): crits in combat splatter and fade on the timer as before; the bar shows in combat and hides out of combat at rest as before; `/bs debug` a few seconds after the last splatter faded → both idle
-- [ ] 6.4 If anything looks different from before (a splatter stuck, beads not updating, the bar not reappearing), `/bs debug`, `/reload`, and ask for the saved variables to be read
+Everything else (idle detection, every wake, fades, timers, crossfade, bar opacity and hide rules, `/bs test`, the debug line) is covered by the harness in groups 1 and 5. This check measures the one unmeasured API behaviour and confirms the idle state on the real client. It runs alongside implementation; it does not block it.
+
+- [ ] 6.1 Rogue (or cat druid), out of combat: `/bs trace`, put combo points on mob A, target mob B, then A again, waiting a few seconds each time; then `/reload` with points on a target and `/bs trace` again right after; stop the trace. Beads and splatters should follow each switch as before. Stand still at full energy with no target for 5 s, `/bs debug`, `/reload`, and ask for the saved variables to be read. Pass: every `GetComboPoints(player,target) = N` trace line lands under 3 s after its `PLAYER_TARGET_CHANGED` (or after the trace start following the reload), and the debug line reads `idle: splatters=idle bar=idle`. If a count lands later, raise `ns.COMBO_SETTLE` to the measured delay plus margin (nothing else changes). If anything looked different from before, say so; the same saved variables show the state
 
 ## Workflow follow-up
 
 - Optional, separate from this change: one more `/bs trace` run (switch A→B in combat, wait 3 s, hit B back to A's old count, look for `UNIT_POWER_UPDATE ... COMBO_POINTS`) tells whether the in-combat poll for combo characters could be dropped later (design Open Questions).
-- Archive with `/openspec-archive-change idle-no-cost` once group 6 passes; `skip_specs`, so no spec is merged. Releasing is separate.
+- Archive with `/openspec-archive-change idle-no-cost` once 6.1 passes; `skip_specs`, so no spec is merged. Releasing is separate.
