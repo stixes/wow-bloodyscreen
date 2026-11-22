@@ -194,7 +194,12 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
    API names to its `read_globals`, since an unknown global is usually a typo).
 3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every line
    should be `PASS`. It stubs the WoW API, including secret values, which error
-   on any maths or comparison. Add checks for new behaviour.
+   on any maths or comparison. Add checks for new behaviour: automate
+   everything the harness can see (logic, text, settings, migrations, slash
+   commands), so the in-game list stays as short as possible.
+   **When a feature is complete, give the user its manual test list without
+   being asked**: only what needs the real game (unmeasured API behaviour,
+   visuals, feel), each with what to do and what they should see.
 4. In game, the user runs `/reload` for Lua or TOC changes. **New texture
    files need a full game restart**; files that were only changed are picked
    up by `/reload`.

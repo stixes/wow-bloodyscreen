@@ -72,6 +72,8 @@ SlashCmdList = {}; GetBuildInfo=function() return "1.60.1","x","y",16001 end
 MinimalSliderWithSteppersMixin = {Label={Right=1}}
 local nset = 0
 Settings = setmetatable({}, {__index=function() return function() nset=nset+1; return stub(), stub() end end})
+local dropdownTooltips = {} -- tooltips passed to Settings.CreateDropdown, checked below
+rawset(Settings, "CreateDropdown", function(_, _, _, tooltip) nset=nset+1; dropdownTooltips[#dropdownTooltips+1] = tooltip; return stub() end)
 CreateSettingsButtonInitializer = function() nset=nset+1; return stub() end
 local ns = {}
 BloodyScreenForeverDB = { mode="combat", enabled=true, minAlpha=0.5, size=300, timer=7, areaW=500, areaH=500, version=nil }
@@ -319,6 +321,22 @@ fire("UNIT_DISPLAYPOWER", "player"); run(0.1); ns.ClearNow()
 print = function() end; SlashCmdList.BLOODYSCREENFOREVER("strict on"); print = realPrint
 crit(); run(0.02)
 check("/bs strict on: crits still splatter, no strict key saved", vis() == 1 and ns.db.strict == nil)
+
+-- /bs debug crit line: seen equals shown (nothing is filtered), no strict fields
+printed = {}
+print = function(...) printed[#printed+1] = table.concat({...}, " ") end
+SlashCmdList.BLOODYSCREENFOREVER("debug")
+print = realPrint
+local critLine
+for _, l in ipairs(printed) do if l:find("crits on target:") then critLine = l end end
+local seen, shown = (critLine or ""):match("seen=(%d+) shown=(%d+) secret%-flag=%d+$")
+check("/bs debug: crits on target seen=shown, no strict fields: "..tostring(critLine and critLine:match("crits on target:.*")),
+    seen ~= nil and seen == shown and not critLine:lower():find("strict") and not critLine:find("autoattack"))
+
+-- Trigger tooltip tells the new story: crits are hits the target takes, from anyone
+local trig = dropdownTooltips[1] or ""
+check("Trigger tooltip: crits from anyone (\"taking a beating\", pets, group)",
+    trig:find("taking a beating") and trig:find("pet") and trig:find("group") and not trig:lower():find("strict"))
 
 -- settings version 10: a saved strict value is dropped, the trigger kept
 BloodyScreenForeverDB = { mode="critshared", strict=true, max=6, version=9 }
