@@ -52,7 +52,7 @@ local SECRET = setmetatable({}, {
 local energy = 60
 UnitPower = function(_, pt) if pt == 3 or pt == nil then return secretPower and SECRET or energy end return power end
 local cpMax = 5
-UnitPowerMax = function(_, pt) if pt == 4 then return cpMax end return secretPower and SECRET or 100 end
+UnitPowerMax = function(_, pt) if pt == 4 then return cpMax end return (secretPower == true) and SECRET or 100 end
 UnitPowerType = function() return 3, "ENERGY" end
 PowerBarColor = { ENERGY = {r=1,g=0.9,b=0.3} }
 
@@ -237,12 +237,17 @@ power=0; run(0.1); check("hideFull: points gone -> hidden again", barState.alpha
 barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); check("hideFull: entering combat -> combat opacity", barState.alpha==ns.db.barAlphaCombat)
 barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); check("hideFull: leaving combat at full -> hidden", barState.alpha==0)
 ns.db.barHideFull=false; ns.ApplyBar(); check("hideFull off -> visible", barState.alpha==ns.db.barAlphaIdle)
-ns.db.barHideFull=true; secretPower=true; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
-check("hideFull: unreadable (secret) power -> stays visible, no error", barState.alpha==ns.db.barAlphaIdle)
+ns.db.barHideFull=true; secretPower="ooc"; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("hideFull (Forever: energy secret, max readable): regenerating -> visible", barState.alpha==ns.db.barAlphaIdle)
+for k=1,4 do run(0.7); barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY") end
+check("hideFull: power events keep coming -> stays visible", barState.alpha==ns.db.barAlphaIdle)
+run(3.1); check("hideFull: 3 s without a power event -> treated as full, hidden", barState.alpha==0)
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); check("hideFull: spending energy -> back at once", barState.alpha==ns.db.barAlphaIdle)
 -- combat ends while power is still secret, then becomes readable with no power event
-energy=100; secretPower=true; barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
-check("hideFull: still secret right after combat -> visible", barState.alpha==ns.db.barAlphaIdle)
-secretPower=false; run(0.1); check("hideFull: readable a moment later, no event -> hidden by the poll", barState.alpha==0)
+energy=100; secretPower="ooc"; barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+check("hideFull: right after combat -> visible", barState.alpha==ns.db.barAlphaIdle)
+run(3.1); check("hideFull: 3 s after combat with no power change -> hidden by the poll", barState.alpha==0)
+secretPower=false
 local traceUpd
 for k in pairs(scripts) do end
 SlashCmdList.BLOODYSCREENFOREVER("trace")

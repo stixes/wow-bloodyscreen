@@ -38,7 +38,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Energy bar | on | new, see below |
 | Energy bar position | −140 px | below screen centre |
 | Energy bar opacity in / out of combat | 40% / 15% | also applies to the combo points |
-| Hide when full out of combat | on | hides the bar (and baubles) out of combat at full power with no combo points |
+| Hide when full out of combat | on | hides the bar (and baubles) out of combat at full power with no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "full" means 3 s out of combat with no power change. |
 | Avoid the centre | off | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
 
 Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
@@ -122,6 +122,6 @@ with the textures included.
 
 ## Status
 
-v0.15.0. The Lua passes a syntax check and a stubbed-API harness that checks
+v0.15.2. The Lua passes a syntax check and a stubbed-API harness that checks
 every trigger, the slot rules, fades, the drawing area and the size clamp. It
 has **not been tested in the live client yet.**

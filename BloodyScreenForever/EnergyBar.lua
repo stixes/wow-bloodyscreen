@@ -31,6 +31,9 @@ local inCombat = false     -- from the REGEN events: InCombatLockdown() is still
 local lastCur, lastMax     -- last drawn combo state
 local pollElapsed = 0
 local POLL = 0.05          -- s between combo point reads
+local QUIET = 3.0          -- s without a power change, out of combat, that counts as full
+                           -- (longer than vanilla's 2 s energy tick)
+local lastPowerChange = 0  -- GetTime() of the last power event (or combat end)
 
 local function Readable(v)
     if v == nil then return false end
@@ -43,13 +46,17 @@ local function Color(token)
     return c or FALLBACK_COLOR
 end
 
--- Full power? Only answerable when the values are readable (out of combat
--- they are; in combat the primary power is secret, so "not full" is assumed).
+-- Full power? Compare directly when the values are readable. On Forever the
+-- player's primary power is secret even out of combat (UnitPowerMax is not;
+-- measured with /bs debug, build 16001), so then: power events stop once
+-- energy (or mana) is full, and QUIET seconds without one means full.
 local function IsFull()
     local ok1, cur = pcall(UnitPower, "player", powerType)
     local ok2, max = pcall(UnitPowerMax, "player", powerType)
-    if not (ok1 and ok2 and Readable(cur) and Readable(max)) then return false end
-    return type(cur) == "number" and type(max) == "number" and max > 0 and cur >= max
+    if ok1 and ok2 and Readable(cur) and Readable(max) and type(cur) == "number" and type(max) == "number" then
+        return max > 0 and cur >= max
+    end
+    return GetTime() - lastPowerChange >= QUIET
 end
 
 local function UpdateAlpha()
@@ -154,8 +161,8 @@ function ns.BarDebug()
         ("bar: powerType=%s/%s (cached %s/%s) UnitPower=%s UnitPowerMax=%s UnitPower(no type)=%s"):format(
             tostring(pt), tostring(tok), tostring(powerType), tostring(powerToken),
             V(UnitPower, "player", powerType), V(UnitPowerMax, "player", powerType), V(UnitPower, "player")),
-        ("bar: hideFull=%s IsFull=%s lastCur(combo)=%s idle=%.2f combat=%.2f"):format(
-            tostring(ns.db.barHideFull), tostring(IsFull()), tostring(lastCur),
+        ("bar: hideFull=%s IsFull=%s sinceLastPowerChange=%.1fs lastCur(combo)=%s idle=%.2f combat=%.2f"):format(
+            tostring(ns.db.barHideFull), tostring(IsFull()), GetTime() - lastPowerChange, tostring(lastCur),
             ns.db.barAlphaIdle, ns.db.barAlphaCombat),
     }
 end
@@ -200,12 +207,14 @@ function ns.SetupBar()
     bar:SetScript("OnEvent", function(_, event, unit, token)
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
             inCombat = (event == "PLAYER_REGEN_DISABLED")
+            lastPowerChange = GetTime() -- the quiet period starts when combat ends
             UpdateAlpha()
         elseif event == "PLAYER_TARGET_CHANGED" then
             -- combo points follow the target on Forever; no power event fires on a switch
             UpdateCombo()
             C_Timer.After(0, UpdateCombo)
         elseif event == "UNIT_DISPLAYPOWER" or event == "PLAYER_ENTERING_WORLD" then
+            lastPowerChange = GetTime()
             if event == "PLAYER_ENTERING_WORLD" then
                 inCombat = UnitAffectingCombat("player") and true or false
                 UpdateAlpha()
@@ -214,6 +223,7 @@ function ns.SetupBar()
         elseif token == "COMBO_POINTS" then -- power token strings are not secret
             UpdateCombo()
         elseif token == nil or token == powerToken then
+            lastPowerChange = GetTime()
             UpdateValue()
         end
     end)
