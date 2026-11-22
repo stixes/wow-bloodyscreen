@@ -21,7 +21,7 @@ read_globals = {
     "CreateSettingsListSectionHeaderInitializer", "CreateSettingsButtonInitializer",
     -- units and power
     "UnitPower", "UnitPowerMax", "UnitPowerType", "UnitClass", "UnitName",
-    "UnitAffectingCombat", "InCombatLockdown", "GetComboPoints", "Enum",
+    "UnitAffectingCombat", "InCombatLockdown", "GetComboPoints", "Enum", "IsInInstance",
     -- secret values (Midnight/Forever)
     "issecretvalue", "canaccessvalue",
     -- client info and helpers

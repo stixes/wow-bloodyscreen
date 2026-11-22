@@ -66,6 +66,8 @@ ns.DEFAULTS = {
     barAlphaCombat = 0.40, -- energy bar opacity in combat
     barAlphaIdle   = 0.15, -- and out of combat
     barHideFull    = true, -- hide the bar out of combat when power is at rest (full, or empty for rage) and no combo points
+    offInRaids         = false, -- new: no splatters inside raid instances
+    offInBattlegrounds = true,  -- new: no splatters inside battlegrounds and arenas
 }
 
 local db
@@ -88,9 +90,32 @@ ns.HasComboPoints = HasComboPoints
 -- behind a wall of blood.
 local AUTO_CRIT = "crittimed"
 local mode
+
+-- The kind of instance the player is in ("raid", "pvp", "arena", "party", ...),
+-- or "none" when outside or when the client doesn't say. Guarded: if the API is
+-- missing or its value unreadable, the disable settings simply don't apply.
+local function InstanceType()
+    if not IsInInstance then return "none" end
+    local ok, _, t = pcall(IsInInstance)
+    if ok and t ~= nil and (issecretvalue == nil or not issecretvalue(t)) and type(t) == "string" then
+        return t
+    end
+    return "none"
+end
+
+-- "Disable in raids" / "Disable in battlegrounds" (arenas count as battlegrounds).
+local function DisabledHere()
+    local t = InstanceType()
+    if t == "raid" then return db.offInRaids == true end
+    if t == "pvp" or t == "arena" then return db.offInBattlegrounds == true end
+    return false
+end
+
+-- The trigger in effect; "off" while a disable setting applies here.
 local function ResolveMode()
     local m = db.mode
     if m == "auto" then m = HasComboPoints() and "combo" or AUTO_CRIT end
+    if DisabledHere() then m = "off" end
     local changed = m ~= mode
     mode = m
     return changed
@@ -443,6 +468,7 @@ local function OnTargetChanged()
 end
 
 local function OnCrit()
+    if mode == "off" then return end -- disabled in this raid or battleground
     if mode == "crit" then
         critCount = critCount + 1
         for i = 0, math.min(critCount, db.max) - 1 do
@@ -462,7 +488,7 @@ end
 -- UNIT_COMBAT(unit, action, flagText, amount, schoolMask)
 local function OnUnitCombat(unit, action, flagText)
     -- Only the "target" token, like the original's destGUID == target.
-    if unit ~= "target" or mode == "combo" then return end
+    if unit ~= "target" or mode == "combo" or mode == "off" then return end
     if not Readable(flagText) then stats.secretFlag = stats.secretFlag + 1 return end
     if flagText ~= "CRITICAL" then return end
     if Readable(action) and action ~= "WOUND" then return end -- heals, misses, etc.
@@ -532,6 +558,13 @@ function handlers.UNIT_POWER_UPDATE(_unit, token)
 end
 
 function handlers.UNIT_COMBAT(...) OnUnitCombat(...) end
+-- Entering or leaving a raid or battleground (PLAYER_ENTERING_WORLD re-resolves
+-- through ApplyLayout; this is a second check in case the type comes late), and
+-- the two disable checkboxes.
+function ns.RecheckZone()
+    if db and ResolveMode() then ClearNow() end
+end
+function handlers.ZONE_CHANGED_NEW_AREA() ns.RecheckZone() end
 function handlers.PLAYER_REGEN_DISABLED() inCombat = true; Wake() end
 function handlers.PLAYER_REGEN_ENABLED() inCombat = false end
 function handlers.PLAYER_TARGET_CHANGED()
@@ -552,7 +585,7 @@ end
 handlers.UI_SCALE_CHANGED = handlers.DISPLAY_SIZE_CHANGED
 
 for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "DISPLAY_SIZE_CHANGED",
-    "UI_SCALE_CHANGED", "UNIT_COMBAT", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
+    "UI_SCALE_CHANGED", "UNIT_COMBAT", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "ZONE_CHANGED_NEW_AREA" }) do
     area:RegisterEvent(e)
 end
 area:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
@@ -674,6 +707,11 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         Log(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(
             tostring(WOW_PROJECT_ID), tostring((select(4, GetBuildInfo()))), vis, critCount, db.areaW, db.areaH,
             area:GetWidth(), area:GetHeight(), tostring(db.avoidCentre)))
+        local zok, zin, ztype = false, nil, nil
+        if IsInInstance then zok, zin, ztype = pcall(IsInInstance) end
+        local function ZV(v) if not zok then return "n/a" end if IsSecret(v) then return "secret" end return tostring(v) end
+        Log(("zone: IsInInstance=%s/%s offInRaids=%s offInBattlegrounds=%s"):format(
+            ZV(zin), ZV(ztype), tostring(db.offInRaids), tostring(db.offInBattlegrounds)))
         if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Log(line) end end
         Log("saved - /reload to write it to disk")
     else

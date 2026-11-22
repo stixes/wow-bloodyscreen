@@ -3,7 +3,7 @@
 -- this client, the addon still works (defaults, /bs test, /bs reset).
 -- Mirrors the original's settings: trigger, timer, max splatters, splatter
 -- size, drawing area (the original's draggable corners become width/height in %),
--- plus "avoid the centre" and the energy bar.
+-- plus "avoid the centre", the raid / battleground switches and the energy bar.
 
 local _, ns = ...
 local category
@@ -50,6 +50,15 @@ function ns.BuildOptions()
     Slider("areaH", "Drawing area height", "Splatters are placed inside a centred area this share of the screen height.", 10, 100, 5, "%d%%", ns.ApplyLayout)
     Settings.CreateCheckbox(category, Setting("avoidCentre", "Avoid the centre"),
         "Keep splatters off the centre of the screen (about 20% around your character).")
+    local function ZoneCheck(key, name, tooltip)
+        local s = Setting(key, name)
+        Settings.CreateCheckbox(category, s, tooltip)
+        s:SetValueChangedCallback(function() ns.RecheckZone() end)
+    end
+    ZoneCheck("offInRaids", "Disable in raids",
+        "No blood splatters inside raid instances. The energy bar stays.")
+    ZoneCheck("offInBattlegrounds", "Disable in battlegrounds",
+        "No blood splatters inside battlegrounds and arenas. The energy bar stays.")
     if layout and CreateSettingsButtonInitializer then
         layout:AddInitializer(CreateSettingsButtonInitializer("Preview", "Test",
             function() ns.Test() end, "Show all splatters for a few seconds (same as /bs test).", true))

@@ -76,6 +76,11 @@ Settings = setmetatable({}, {__index=function() return function() nset=nset+1; r
 local dropdownTooltips = {} -- tooltips passed to Settings.CreateDropdown, checked below
 rawset(Settings, "CreateDropdown", function(_, _, _, tooltip) nset=nset+1; dropdownTooltips[#dropdownTooltips+1] = tooltip; return stub() end)
 CreateSettingsButtonInitializer = function() nset=nset+1; return stub() end
+local checkboxes = {} -- label -> tooltip, from Settings.CreateCheckbox
+rawset(Settings, "RegisterAddOnSetting", function(_, _, _, _, _, name) nset=nset+1; local st = stub(); rawset(st, "label", name); return st end)
+rawset(Settings, "CreateCheckbox", function(_, st, tooltip) nset=nset+1; checkboxes[rawget(st, "label") or "?"] = tooltip or ""; return stub() end)
+local instType = "none" -- what IsInInstance reports: "none", "raid", "pvp", "arena", ...
+IsInInstance = function() return instType ~= "none", instType end
 local ns = {}
 BloodyScreenForeverDB = { mode="combat", enabled=true, minAlpha=0.5, size=300, timer=7, areaW=500, areaH=500, version=nil }
 assert(loadfile(dir.."/BloodyScreenForever.lua"))("BloodyScreenForever", ns)
@@ -459,7 +464,97 @@ SlashCmdList.BLOODYSCREENFOREVER("trace"); print = realPrint
 check("/bs trace frame is hidden (no OnUpdate) except while tracing", hiddenBefore and shownDuring and not tr:IsShown())
 GetComboPoints = nil
 
+
+-- disable in raids and battlegrounds ---------------------------------------
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("default"); print = realPrint
+playerClass, ptype, ptoken = "WARRIOR", 1, "RAGE"; secret = false; power = 0
+fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+inCombatFlag = true; fire("PLAYER_REGEN_DISABLED"); run(0.1); ns.ClearNow()
+local function zone(t, ev) instType = t; fire(ev or "ZONE_CHANGED_NEW_AREA"); run(0.02) end
+local function crits(n) for _ = 1, n do crit() end; run(0.02); return vis() end
+local function settle() run(ns.db.timer + 1); ns.ClearNow(); run(0.02) end
+check("defaults: Disable in raids off, Disable in battlegrounds on", ns.db.offInRaids == false and ns.db.offInBattlegrounds == true)
+zone("pvp"); check("defaults, battleground: crits add nothing", crits(2) == 0); settle()
+zone("raid"); check("defaults, raid: crits splatter", crits(2) == 2); settle()
+ns.db.offInRaids = true; ns.RecheckZone()
+check("raid box on, in a raid: crits add nothing", crits(2) == 0); settle()
+ns.db.offInRaids = false; ns.RecheckZone()
+check("raid box off, in a raid: crits splatter", crits(1) == 1); settle()
+ns.db.offInRaids, ns.db.offInBattlegrounds = true, false; zone("pvp")
+check("raid box on, battleground box off, in a battleground: crits splatter", crits(1) == 1); settle()
+ns.db.offInRaids, ns.db.offInBattlegrounds = false, true
+zone("pvp"); check("battleground box on, in a battleground: nothing", crits(1) == 0)
+zone("arena"); check("battleground box on, in an arena: nothing", crits(1) == 0)
+zone("raid"); check("battleground box on, in a raid: crits splatter", crits(1) == 1); settle()
+ns.db.offInRaids = true; zone("none")
+check("raid box on, raid group outside an instance: crits splatter", crits(1) == 1); settle()
+-- entering through a loading screen clears; leaving brings crits back
+crits(2); zone("raid", "PLAYER_ENTERING_WORLD")
+check("entering a raid (raid box on) via a loading screen: splatters cleared, crits add nothing", vis() == 0 and crits(1) == 0)
+zone("none", "PLAYER_ENTERING_WORLD"); check("leaving the raid: the next crit splatters", crits(1) == 1); settle()
+-- switch-on clears splatters shown and mid-fade; the script then idles
+ns.db.offInRaids = false; zone("raid"); crits(3)
+run(ns.db.timer - 0.1); crit(); run(0.2) -- the first three are fading now, the fourth is fresh
+local fadingN = 0 for _, t in ipairs(texs) do local pth = rawget(t, "path")
+  if t.shown and type(pth) == "string" and pth:find("Splatter") and tonumber(pth:match("_(%d+)$")) > 1 then fadingN = fadingN + 1 end end
+local beforeN = vis()
+ns.db.offInRaids = true; ns.RecheckZone()
+check("ticking the raid box inside clears splatters at once, fresh and fading ("..beforeN.." up, "..fadingN.." fading -> "..vis()..")",
+    beforeN == 4 and fadingN == 3 and vis() == 0)
+local okFrames = pcall(run, 0.5); check("frames after the switch run without error, script idles", okFrames and scripts.OnUpdate == nil)
+ns.db.offInRaids = false; ns.RecheckZone(); check("unticking inside: the next crit splatters", crits(1) == 1); settle()
+-- /bs test still previews while disabled
+ns.db.offInRaids = true; ns.RecheckZone()
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("test"); print = realPrint; run(0.1)
+check("/bs test previews while disabled in a raid", vis() == ns.db.max)
+run(5); check("preview fades afterwards", vis() == 0)
+-- /bs debug: in effect off, zone line
+printed = {}
+print = function(...) printed[#printed+1] = table.concat({...}, " ") end
+SlashCmdList.BLOODYSCREENFOREVER("debug")
+print = realPrint
+local dbgAll = table.concat(printed, "\n")
+check("/bs debug in a disabled raid: in effect off", dbgAll:find("in effect: off", 1, true) ~= nil)
+check("/bs debug zone line: "..tostring(dbgAll:match("zone:[^\n]*")),
+    dbgAll:find("zone: IsInInstance=true/raid offInRaids=true offInBattlegrounds=true", 1, true) ~= nil)
+-- rogue: combo splatters off too (event and poll paths), beads still lit
+playerClass, ptype, ptoken = "ROGUE", 3, "ENERGY"
+fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player"); run(0.1)
+power = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS"); run(0.5)
+local beadsOn = baub()
+check("rogue, raid box on, in a raid: 3 combo points -> no splatters, beads show 3 ("..beadsOn..")", vis() == 0 and beadsOn == 3)
+zone("none"); run(0.1); check("rogue leaves the raid: combo splatters back (3)", vis() == 3)
+power = 0; run(1); ns.ClearNow()
+playerClass, ptype, ptoken = "WARRIOR", 1, "RAGE"
+fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player"); run(0.1)
+-- missing API: settings don't apply
+local realIsInInstance = IsInInstance; IsInInstance = nil; ns.db.offInBattlegrounds = true
+local okNil = pcall(ns.RecheckZone); check("IsInInstance missing, both boxes on: no error, crits splatter", okNil and crits(1) == 1)
+IsInInstance = realIsInInstance; settle(); zone("none")
+-- panel
+check("panel: Disable in raids checkbox, tooltip says the energy bar stays",
+    checkboxes["Disable in raids"] and checkboxes["Disable in raids"]:find("energy bar stays"))
+check("panel: Disable in battlegrounds checkbox, tooltip mentions arenas and the energy bar",
+    checkboxes["Disable in battlegrounds"] and checkboxes["Disable in battlegrounds"]:find("arenas") and checkboxes["Disable in battlegrounds"]:find("energy bar stays"))
+-- /bs reset restores both defaults
+ns.db.offInRaids, ns.db.offInBattlegrounds = true, false
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("reset"); print = realPrint
+check("/bs reset: raids off, battlegrounds on", ns.db.offInRaids == false and ns.db.offInBattlegrounds == true)
+
 check("never idle with a splatter on screen: "..idleViolations.." violations", idleViolations == 0)
+
+
+-- defaults on load: fresh, upgrade from version 10, a saved untick survives
+BloodyScreenForeverDB = {}
+fire("ADDON_LOADED","BloodyScreenForever")
+check("fresh install: raids off, battlegrounds on", ns.db.offInRaids == false and ns.db.offInBattlegrounds == true)
+BloodyScreenForeverDB = { mode="critshared", max=6, version=10 }
+fire("ADDON_LOADED","BloodyScreenForever")
+check("upgrade from version 10: gains raids off, battlegrounds on, keeps the rest, stays at 10",
+    ns.db.offInRaids == false and ns.db.offInBattlegrounds == true and ns.db.mode == "critshared" and ns.db.max == 6 and ns.db.version == 10)
+BloodyScreenForeverDB = { mode="auto", offInBattlegrounds=false, version=10 }
+fire("ADDON_LOADED","BloodyScreenForever")
+check("a saved untick of Disable in battlegrounds survives a reload", ns.db.offInBattlegrounds == false)
 
 if failures > 0 then
     print(("%d check(s) failed"):format(failures))
