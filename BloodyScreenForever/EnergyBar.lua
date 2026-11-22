@@ -202,7 +202,7 @@ function ns.SetupBar()
     baubleRow:SetPoint("TOP", bar, "BOTTOM", 0, -5)
     baubleRow:SetSize(1, BAUBLE_H)
 
-    bar:SetScript("OnEvent", function(_, event, unit, token)
+    bar:SetScript("OnEvent", function(_, event, _unit, token)
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
             inCombat = (event == "PLAYER_REGEN_DISABLED")
             lastPowerChange = GetTime() -- the quiet period starts when combat ends

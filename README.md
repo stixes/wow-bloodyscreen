@@ -38,6 +38,8 @@ tools/gen_drops.py                    regenerate the bead textures
 tools/package.sh                      build the release zip (dist/)
 tools/release.sh                      upload to CurseForge (run by the release workflow)
 tools/forever-patch.sh                bump the TOC for a new Forever version
+tools/hooks/                          Claude Code hooks: lint on edit, tests before commit
+.luacheckrc                           luacheck config (WoW globals)
 tests/harness.lua                     stubbed-API test harness
 .github/workflows/                    CI, release on tag, Forever patch watch
 openspec/                             OpenSpec config, specs and change proposals
@@ -173,7 +175,8 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 ### Dev loop
 
 1. Edit `BloodyScreenForever/*.lua`.
-2. Check syntax: `for f in BloodyScreenForever/*.lua; do luajit -bl $f >/dev/null; done`.
+2. Lint: `luacheck BloodyScreenForever/` (config in `.luacheckrc`; add new WoW
+   API names to its `read_globals`, since an unknown global is usually a typo).
 3. Run the harness: `luajit tests/harness.lua BloodyScreenForever`. Every line
    should be `PASS`. It stubs the WoW API, including secret values, which error
    on any maths or comparison. Add checks for new behaviour.
@@ -181,6 +184,16 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
    files need a full game restart**; files that were only changed are picked
    up by `/reload`.
 5. Commit, bumping `## Version` in the TOC for anything user-visible.
+
+**Claude Code hooks** (`.claude/settings.json`, active when Claude Code is
+started inside this repo):
+- After every edit of a `.lua` file, `tools/hooks/lua-lint.sh` runs a luajit
+  syntax check and luacheck, and feeds the findings back to Claude.
+- Before every `git commit`, `tools/hooks/pre-commit-tests.sh` runs the syntax
+  check, luacheck and the harness, and blocks the commit if any fails.
+
+Both need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
+CI runs the same lint and harness.
 
 ### Getting data out of the game
 

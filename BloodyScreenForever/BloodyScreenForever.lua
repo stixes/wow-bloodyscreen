@@ -475,7 +475,7 @@ function handlers.PLAYER_ENTERING_WORLD()
     autoAttacking, autoRepeat = false, false
 end
 
-function handlers.UNIT_POWER_UPDATE(unit, token)
+function handlers.UNIT_POWER_UPDATE(_unit, token)
     if token == "COMBO_POINTS" then
         lastPowerEvent = GetTime()
         OnCombo(true)
@@ -617,22 +617,22 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
     elseif cmd == "debug" then
         -- also kept in the saved variables (written on /reload), as chat can't be copied
         db.debug = { date("%Y-%m-%d %H:%M:%S") }
-        local Print = function(msg) Print(msg); db.debug[#db.debug + 1] = msg end
+        local function Log(line) Print(line); db.debug[#db.debug + 1] = line end
         local ok, cur = pcall(UnitPower, "player", COMBO)
         local gcp = GetComboPoints and select(2, pcall(GetComboPoints, "player", "target"))
-        Print(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s (in effect: %s)"):format(
+        Log(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s (in effect: %s)"):format(
             tostring(ok), tostring(IsSecret(cur)), IsSecret(cur) and "?" or tostring(cur),
             IsSecret(gcp) and "?" or tostring(gcp), db.mode, tostring(mode)))
-        Print(("crits on target: seen=%d shown=%d dropped(strict)=%d secret-flag=%d | autoattack=%s autorepeat=%s strict=%s"):format(
+        Log(("crits on target: seen=%d shown=%d dropped(strict)=%d secret-flag=%d | autoattack=%s autorepeat=%s strict=%s"):format(
             stats.crits, stats.counted, stats.dropped, stats.secretFlag,
             tostring(autoAttacking), tostring(autoRepeat), tostring(db.strict)))
         local vis = 0
         for i = 0, db.max - 1 do if Visible(i) then vis = vis + 1 end end
-        Print(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(
+        Log(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(
             tostring(WOW_PROJECT_ID), tostring((select(4, GetBuildInfo()))), vis, critCount, db.areaW, db.areaH,
             area:GetWidth(), area:GetHeight(), tostring(db.avoidCentre)))
-        if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Print(line) end end
-        Print("saved - /reload to write it to disk")
+        if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Log(line) end end
+        Log("saved - /reload to write it to disk")
     else
         Help()
     end

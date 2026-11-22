@@ -12,9 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit lua-check
       - name: Syntax
         run: for f in BloodyScreenForever/*.lua; do luajit -bl "$f" > /dev/null; done
+      - name: Lint
+        run: luacheck --no-color BloodyScreenForever/
       - name: Harness
         run: luajit tests/harness.lua BloodyScreenForever
   openspec:

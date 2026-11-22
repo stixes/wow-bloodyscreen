@@ -5,7 +5,7 @@
 -- size, drawing area (the original's draggable corners become width/height in %),
 -- plus "avoid the centre" and the energy bar.
 
-local ADDON, ns = ...
+local _, ns = ...
 local category
 
 function ns.BuildOptions()
