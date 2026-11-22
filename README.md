@@ -1,10 +1,11 @@
 # Bloody Screen Forever
 
-A faithful port of Feador's **Bloody Screen** addon (as last maintained by
-Resike, v5.0.1 for MoP) to **WoW Forever** (Mainline/Midnight API,
-`## Interface: 16001`). Combo points or critical hits splash Feador's original
-blood art on your screen. The code is rewritten for the modern API; the
-behaviour follows the original's.
+A port of Feador's **Bloody Screen** addon (as last maintained by Resike,
+v5.0.1 for MoP) to **WoW Forever** (Mainline/Midnight API,
+`## Interface: 16001`). Combo points or critical hits splash blood on your
+screen, and an energy bar with combo point beads sits under your character.
+The code is rewritten for the modern API and the behaviour follows the
+original's. All art is new.
 
 ## Layout
 
@@ -14,17 +15,20 @@ BloodyScreenForever/          <- symlinked into _forever_/Interface/AddOns/
   BloodyScreenForever.lua      core: slots, triggers, slash commands
   EnergyBar.lua                energy bar under your character
   Options.lua                  Blizzard Settings panel
-  Textures/Splatter{1-5}_{1-10}.tga   fetched, not bundled
-  Textures/Drops/drop_{full,empty}.tga combo point beads (own art, committed)
-tools/fetch_original_textures.sh      fetch Feador's original art
-tools/gen_drops.py                    regenerate the drop textures
+  Textures/Splatters/Splatter{1-5}_{1-10}.tga  blood splatters (own art)
+  Textures/Drops/drop_{full,empty}.tga         combo point beads (own art)
+  LICENSE.txt
+tools/gen_splatters.py                regenerate the splatter textures
+tools/gen_drops.py                    regenerate the bead textures
+tools/package.sh                      build the release zip (dist/)
+tests/harness.lua                     stubbed-API test harness
 ```
 
 ## Install
 
-1. Run `tools/fetch_original_textures.sh`. Without the textures nothing shows.
-2. Copy or symlink `BloodyScreenForever/` into
-   `.../World of Warcraft/_forever_/Interface/AddOns/`.
+Copy or symlink `BloodyScreenForever/` into
+`.../World of Warcraft/_forever_/Interface/AddOns/`, or install it from
+CurseForge.
 
 ## Settings (`/bs`, or Esc > Options > AddOns > Bloody Screen)
 
@@ -109,9 +113,9 @@ working.
   players' crits on your target can slip through in groups, and DoT crits may be
   missed. If the game hides the crit flag (a secret value), the crit is skipped
   and counted under `secret-flag` in `/bs debug`.
-- **Combo points.** `UNIT_COMBO_POINTS` and `GetComboPoints` are now
-  `UNIT_POWER_UPDATE` and `UnitPower("player", Enum.PowerType.ComboPoints)`.
-  These are documented as non-secret, but every read is still guarded.
+- **Combo points.** `UNIT_COMBO_POINTS` is gone. The count is polled from
+  `GetComboPoints("player", "target")` (see above), with power events used to
+  tell hits from target switches. Every read is secret-guarded.
 - **Not ported (yet):** damage-based scaling, the "also on white crits" toggle,
   the range check, and the PvP/PvE toggles (both defaulted to on, which means no
   filtering). The original's minimal scaling factor existed only for damage
@@ -119,13 +123,20 @@ working.
 
 ## Textures
 
-`tools/fetch_original_textures.sh` downloads Feador's art (5 shapes × 10
-pre-faded steps, red on white) from Resike's repo, pinned to commit `4b21e57`.
-The art has no licence. Use it locally, but don't publish or share the addon
-with the textures included.
+All textures are new, made by the scripts in `tools/`. The splatters use the
+original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
+256×256 RLE TGA, red on white, drawn with `MOD` blending.
+
+## Credits and licence
+
+- Original **Bloody Screen** by **Feador**, later maintained by **Resike**
+  (v5.0.1, MoP). This port follows their design and behaviour. None of their
+  art is included.
+- Port, energy bar and art by stixes. MIT licence, see `LICENSE`.
 
 ## Status
 
-v0.16.1. The Lua passes a syntax check and a stubbed-API harness that checks
-every trigger, the slot rules, fades, the drawing area and the size clamp. It
-has **not been tested in the live client yet.**
+v0.17.0. Tested in the live client (combo point trigger, energy bar, beads,
+hide when full). The stubbed-API harness (`luajit tests/harness.lua
+BloodyScreenForever`) checks every trigger, the slot rules, fades, spacing,
+the drawing area, the energy bar and the target-switch logic.

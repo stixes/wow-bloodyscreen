@@ -1,6 +1,7 @@
 -- BloodyScreenForever: a faithful port of Feador's Bloody Screen (as last
 -- maintained by Resike, 5.0.1) to WoW Forever (Mainline/Midnight API,
--- Interface 16001), using the original art.
+-- Interface 16001). The splatter art is new (tools/gen_splatters.py), made in
+-- the original's format: red on white, ten pre-faded steps per shape.
 --
 -- Kept from the original: fixed texture slots (slot i always uses shape
 -- (i % 5) + 1), 266 px x scale, random rotation, a centred drawing area
@@ -18,7 +19,7 @@
 local ADDON, ns = ...
 local PREFIX = "|cffb01010BloodyScreen|r: "
 
-local TEX_PATH = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Splatter"
+local TEX_PATH = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Splatters\\Splatter"
 local SHAPES, STEPS = 5, 10
 local FADE_STEP = 0.05     -- s per pre-faded step: 10 steps = the original's 0.5 s fade
 local CAST_WINDOW = 1.5    -- s after your own cast during which a target crit counts
