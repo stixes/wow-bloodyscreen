@@ -21,6 +21,7 @@ BloodyScreenForever/          <- symlinked into _forever_/Interface/AddOns/
 tools/gen_splatters.py                regenerate the splatter textures
 tools/gen_drops.py                    regenerate the bead textures
 tools/package.sh                      build the release zip (dist/)
+tools/release.sh                      release to CurseForge via its API
 tests/harness.lua                     stubbed-API test harness
 ```
 
@@ -126,6 +127,20 @@ working.
 All textures are new, made by the scripts in `tools/`. The splatters use the
 original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 256×256 RLE TGA, red on white, drawn with `MOD` blending.
+
+## Releasing (CurseForge project 1822467)
+
+1. Bump `## Version` in the TOC (and `## Interface` after a Forever patch).
+2. Add a `## <version>` section to `CHANGELOG.md`, then commit.
+3. `envchain curseforge tools/release.sh beta` (or `alpha` / `release`).
+   Add `--dry-run` to check everything without uploading.
+
+The script refuses to run with uncommitted changes, a version that's already
+tagged, or a missing changelog section. It builds the zip from committed files,
+finds CurseForge's game version for the TOC's Interface (16001 → 1.60.1),
+uploads through the CurseForge upload API and tags `v<version>`. The token is
+`CF_API_TOKEN` in the `curseforge` envchain namespace. It goes to curl through
+stdin and never appears on the command line.
 
 ## Credits and licence
 
