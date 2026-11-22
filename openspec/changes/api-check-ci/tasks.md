@@ -14,17 +14,17 @@ Owner decisions folded in: the generated list is not committed and CI fetches it
 
 ## 2. luacheck config
 
-- [ ] 2.1 Restructure `.luacheckrc` per design D5.
+- [x] 2.1 Restructure `.luacheckrc` per design D5.
   - Keep `std = "lua51"`, `max_line_length = false`, `exclude_files` and `globals`.
   - If `tools/wow-api/forever-api.lua` exists (`io.open` check, not `pcall`): define `stds.wow` with `dofile`, set `files["BloodyScreenForever/"] = { std = "wow" }`, and use the overlay as `read_globals`: `Settings` with exactly the fields the addon calls, `PowerBarColor`, `WOW_PROJECT_ID`, and only the Lua constants the addon needs (e.g. `math.huge`).
   - Otherwise, use today's hand `read_globals` list, unchanged.
   - Update the comments: where the list comes from and how to fetch it (`tools/wow-api/update.sh`), that luacheck runs from the repo root, and that new API goes in the fallback list and, if the dump lacks it, in the overlay.
   - Verify: from the repo root, `luacheck --no-color BloodyScreenForever/` and `luacheck tools/wow-api/gen.lua` exit 0 both with the generated file present and with it renamed away.
-- [ ] 2.2 Confirm that CI's luacheck (apt `lua-check` 1.1.2 on `ubuntu-latest`) handles `io.open`/`dofile` in the config, nested `fields`, and the stdin `--filename` form from 3.1 (design D9). If any fails, change the CI install to luacheck 1.2.0 pinned through luarocks. Verify: the CI steps from 3.2 pass on a pushed branch, or the same commands pass in an `ubuntu-latest` container.
+- [x] 2.2 Confirm that CI's luacheck (apt `lua-check` 1.1.2 on `ubuntu-latest`) handles `io.open`/`dofile` in the config, nested `fields`, and the stdin `--filename` form from 3.1 (design D9). If any fails, change the CI install to luacheck 1.2.0 pinned through luarocks. Verify: the CI steps from 3.2 pass on a pushed branch, or the same commands pass in an `ubuntu-latest` container.
 
 ## 3. Negative fixture and CI
 
-- [ ] 3.1 Add `tests/api-typos.lua` with one deliberate typo per kind: global (`UnitPowr`), `C_Timer` field (`C_Timer.Aftr`), `Enum` field (`Enum.PowerType.ComboPoint`), `Settings` field (`Settings.CreateSlidr`), and a non-WoW Lua global (`os.time`). Add a header comment saying it must fail.
+- [x] 3.1 Add `tests/api-typos.lua` with one deliberate typo per kind: global (`UnitPowr`), `C_Timer` field (`C_Timer.Aftr`), `Enum` field (`Enum.PowerType.ComboPoint`), `Settings` field (`Settings.CreateSlidr`), and a non-WoW Lua global (`os.time`). Add a header comment saying it must fail.
   - Add `tools/check-api-typos.sh` (design D6). It first fails if `tools/wow-api/forever-api.lua` is missing or empty. Then it feeds the fixture to luacheck on stdin with `--filename BloodyScreenForever/api-typos.lua -`, so the fixture gets the addon's rules; passing the excluded file directly is silently skipped. It exits 0 only if luacheck fails and reports all five names.
   - Verify: the script passes with the list present. It fails with the list renamed away (only `UnitPowr` is reported then), and it fails when one typo line is corrected.
 - [ ] 3.2 Edit the `test` job in `.github/workflows/ci.yml`.

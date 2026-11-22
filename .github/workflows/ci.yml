@@ -1,4 +1,5 @@
-# Syntax check + stubbed-API harness on every push and PR.
+# Syntax check, lint against the WoW Forever API list, and the stubbed-API
+# harness on every push and PR.
 name: CI
 on:
   push:
@@ -15,8 +16,28 @@ jobs:
       - run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit lua-check
       - name: Syntax
         run: for f in BloodyScreenForever/*.lua; do luajit -bl "$f" > /dev/null; done
+      - name: Cache WoW API dump
+        uses: actions/cache@v6.1.0
+        with:
+          path: tools/wow-api/cache
+          key: wow-api-${{ hashFiles('tools/wow-api/pin') }}
+      - name: Generate WoW API list
+        # fetches the pinned upstream files on a cache miss; never committed
+        run: tools/wow-api/update.sh
       - name: Lint
         run: luacheck --no-color BloodyScreenForever/
+      - name: API check catches typos
+        run: tools/check-api-typos.sh
+      - name: API list matches the TOC
+        # warns only: the upstream dump can lag a Forever patch by days
+        run: |
+          pin=$(sed -n 's/^interface=//p' tools/wow-api/pin)
+          toc=$(sed -n 's/^## Interface: *//p' BloodyScreenForever/BloodyScreenForever.toc | tr -d '\r')
+          if [ "$pin" != "$toc" ]; then
+            echo "::warning::WoW API list is for interface $pin but the TOC says $toc. Run tools/wow-api/update.sh --pin <sha> with the Ketho/BlizzardInterfaceResources forever-branch commit for the new build."
+          else
+            echo "WoW API list matches interface $toc"
+          fi
       - name: Harness
         run: luajit tests/harness.lua BloodyScreenForever
   openspec:
