@@ -57,7 +57,7 @@ CurseForge.
 
 ## Settings (`/bs`, or Esc > Options > AddOns > Bloody Screen)
 
-Two sections, **Blood splatters** and **Energy bar**. The splatter settings are the original's, plus *Automatic* and *Avoid the centre*:
+Two sections, **Blood splatters** and **Energy bar**. The splatter settings are the original's, plus *Automatic*, *Avoid the centre*, and *Disable in raids* / *Disable in battlegrounds*:
 
 | setting | default | notes |
 |---|---|---|
@@ -71,6 +71,8 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Energy bar opacity in / out of combat | 40% / 15% | also applies to the combo points |
 | Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. |
 | Avoid the centre | off | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
+| Disable in raids | off | new: no splatters inside raid instances (any trigger, combo points too). A raid group out in the world doesn't count. The energy bar and combo beads stay. |
+| Disable in battlegrounds | on | new: no splatters inside battlegrounds and arenas. The energy bar and combo beads stay. |
 
 Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
 `/bs debug`, `/bs trace` (log combo sources and events, saved on `/reload`).

@@ -12,6 +12,8 @@ Your target is taking a beating, and your screen shows it.
 * The hidden `/bs strict` filter, which tried to keep only your own crits by timing, is gone. Your saved settings update on their own, and your chosen trigger is kept.
 * Rogues and druids in cat form on Automatic see no change: their splatters follow combo points.
 * The addon now costs nothing between fights: while no splatter is on screen and nothing is pending, it does no per-frame work at all. Splatters, combo beads and the energy bar look and behave exactly as before. `/bs debug` has a new `idle:` line showing whether its per-frame scripts are running or idle.
+* New settings in the *Blood splatters* section: **Disable in raids** (off by default) and **Disable in battlegrounds** (on by default, arenas included). Inside those instances no splatters appear from any trigger; the energy bar and combo beads stay. `/bs test` still previews, and `/bs debug` has a new `zone:` line.
+* **Splatters are now off in battlegrounds and arenas for everyone after this update.** To keep them, untick *Disable in battlegrounds* in Esc > Options > AddOns > Bloody Screen, *Blood splatters* section.
 
 ## 0.18.1
 
