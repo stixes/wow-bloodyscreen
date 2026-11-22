@@ -33,8 +33,8 @@ Only what needs the real game; everything else is in the harness.
 
 - [ ] 3.1 **Not tested (owner can't set up a raid, 2026-11-22); ships untested. The battleground check covers the shared instance detection; only the "raid" type value is unverified.** Raid (any raid instance; the setting off first): `/bs debug` inside shows `zone: IsInInstance=true/raid`. If the type is anything else, report it (the rule needs adjusting). Then tick "Disable in raids": splatters on screen vanish, and in a fight no splatters appear while the energy bar and beads work as usual. Untick it: crits splatter again
 - [ ] 3.2 **Not tested (see 3.1); the battleground check 3.3 covers leaving an instance.** Leave the raid with the box ticked: after the loading screen, crits on a mob outside splatter as usual. Re-enter: none
-- [ ] 3.3 Battleground (only if Forever has them; skip otherwise, the box stays either way): with default settings, `/bs debug` inside shows `.../pvp` and `in effect: off`, and no splatters appear in a fight Also: untick "Disable in battlegrounds" inside and crits splatter, tick it again; leave the battleground and crits outside splatter as usual after the loading screen.
-- [ ] 3.4 If anything is off: `/bs debug`, `/reload`, and ask for the saved variables to be read; fix and add a harness check
+- [ ] 3.3 Battleground (only if Forever has them; skip otherwise, the box stays either way): with default settings, `/bs debug` inside shows `.../pvp` and `in effect: off`, and no splatters appear in a fight Also: untick "Disable in battlegrounds" inside and crits splatter, tick it again; leave the battleground and crits outside splatter as usual after the loading screen. **Partly tested 2026-11-22: inside a battleground `/bs debug` showed `pvp` and `in effect: off` as expected (the real-game unknown). Fighting, toggling and leaving couldn't be tested (no opponents); the harness covers them. Left unticked on purpose.**
+- [x] 3.4 If anything is off: `/bs debug`, `/reload`, and ask for the saved variables to be read; fix and add a harness check (Nothing was off.)
 
 ## Workflow follow-up
 
