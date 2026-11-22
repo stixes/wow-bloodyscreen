@@ -76,8 +76,8 @@ assert(loadfile(dir.."/EnergyBar.lua"))("BloodyScreenForever", ns)
 assert(loadfile(dir.."/Options.lua"))("BloodyScreenForever", ns)
 local function fire(e,...) scripts.OnEvent(nil,e,...) end
 local function run(sec) for _=1,math.floor(sec/0.02) do now=now+0.02; local q = nextFrame; nextFrame = {}; for _,fn in ipairs(q) do fn() end; scripts.OnUpdate(); if barState.onUpdate then barState.onUpdate(nil, 0.02) end end end
-local function vis() local n=0 for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then n=n+1 end end return n end
-local function shapes() local s={} for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then s[#s+1]=t.path:match("Splatter(%d_%d+)") end end return table.concat(s,",") end
+local function vis() local n=0 for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then n=n+1 end end return n end
+local function shapes() local s={} for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then s[#s+1]=t.path:match("Splatter(%d_%d+)") end end return table.concat(s,",") end
 local function cp(n) power=n; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.02) end
 local function crit() fire("UNIT_COMBAT","target","WOUND","CRITICAL",1234,1) end
 local function mode(m) ns.db.mode=m; ns.ClearNow() end
@@ -108,7 +108,7 @@ run(1.8); check("critshared: all gone 5s after last crit", vis()==0)
 ns.db.max=3; ns.ApplyLayout(); mode("crittimed"); for i=1,5 do crit() end; run(0.02); check("rotation wraps at max=3", vis()==3)
 -- size clamp and area
 ns.db.areaW=10; ns.db.areaH=20; ns.ApplyLayout(); SlashCmdList.BLOODYSCREENFOREVER("test")
-local w=0 for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then w=math.max(w,t.w) end end
+local w=0 for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then w=math.max(w,t.w) end end
 check("size clamped to drawing area (10% of 1920 = 192): "..w, w==192)
 run(4.1); run(0.6); check("preview fades after 4s", vis()==0)
 date = date or os.date
@@ -118,7 +118,7 @@ secret=true; mode("crit"); crit(); SlashCmdList.BLOODYSCREENFOREVER("debug")
 SlashCmdList.BLOODYSCREENFOREVER("default"); ns.db.max=20; ns.ApplyLayout()
 local function sample(n) local inZone, outArea = 0, 0
   for k=1,n do SlashCmdList.BLOODYSCREENFOREVER("test")
-    for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then
+    for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then
       local r = t.w/2*0.75
       local dx, dy = math.max(math.abs(t.x)-192,0), math.max(math.abs(t.y)-108,0)
       if dx*dx+dy*dy < r*r then inZone=inZone+1 end
@@ -135,7 +135,7 @@ local function overlaps(n, maxs, avoid)
   ns.db.max=maxs; ns.db.avoidCentre=avoid; ns.ApplyLayout()
   local bad, pairsN = 0, 0
   for k=1,n do SlashCmdList.BLOODYSCREENFOREVER("test")
-    local v = {} for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then v[#v+1]=t end end
+    local v = {} for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then v[#v+1]=t end end
     for a=1,#v do for b=a+1,#v do
       local ra, rb = v[a].w/2*0.75, v[b].w/2*0.75
       local d = math.sqrt((v[a].x-v[b].x)^2 + (v[a].y-v[b].y)^2)
@@ -150,7 +150,7 @@ for _, c in ipairs({{5,false},{10,false},{10,true},{15,true},{20,true}}) do
 end
 ns.db.max=10; ns.db.avoidCentre=false; ns.ApplyLayout()
 for i=1,5 do cp(i) end
-local v = {} for _,t in ipairs(texs) do if t.shown and type(rawget(t,"path"))=="string" then v[#v+1]=t end end
+local v = {} for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then v[#v+1]=t end end
 check("combo trigger also spaced: 5 shown", #v==5)
 SlashCmdList.BLOODYSCREENFOREVER("debug")
 -- energy bar
@@ -169,7 +169,8 @@ barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS")
 check("bar: ignores other power tokens", barState.value == nil)
 ns.db.barY = -200; ns.ApplyBar(); check("bar: position setting applied", barState.y == -200)
 -- opacity + baubles
-local function baub() local on, total = 0, 0 for _,x in ipairs(texs) do if rawget(x,"color") and x.shown then total=total+1; if rawget(x,"color")==1 then on=on+1 end end end return on, total end
+local function baub() local on, total = 0, 0 for _,x in ipairs(texs) do local pth = rawget(x,"path")
+  if x.shown and type(pth)=="string" and pth:find("Drops") then total=total+1; if pth:find("drop_full") then on=on+1 end end end return on, total end
 inCombatFlag=false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); check("bar: idle opacity 0.15", barState.alpha==0.15)
 inCombatFlag=true; barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); check("bar: combat opacity 0.40", barState.alpha==0.40)
 ns.db.barAlphaCombat=0.7; ns.ApplyBar(); check("bar: opacity setting applied", barState.alpha==0.7)

@@ -16,11 +16,11 @@ local WIDTH, HEIGHT = 160, 10
 local TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"
 local FALLBACK_COLOR = { r = 1, g = 0.96, b = 0.41 } -- energy yellow
 local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
-local BAUBLE, BAUBLE_GAP = 12, 5
-local BAUBLE_ON = { 1, 0.24, 0.1 }       -- combo point red
-local BAUBLE_OFF = { 0.15, 0.15, 0.15 }
+-- combo point baubles: little drops of blood (tools/gen_drops.py)
+local BAUBLE_W, BAUBLE_H, BAUBLE_GAP = 12, 16, 5
+local DROP_FULL = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_full"
+local DROP_EMPTY = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_empty"
 local MAX_BAUBLES = 10
-local ROUND_MASK = "Interface\\CHARACTERFRAME\\TempPortraitAlphaMask"
 
 local bar, text, baubleRow
 local baubles = {}
@@ -90,16 +90,7 @@ local function Bauble(i)
     local b = baubles[i]
     if not b then
         b = baubleRow:CreateTexture(nil, "ARTWORK")
-        b:SetSize(BAUBLE, BAUBLE)
-        b:SetColorTexture(1, 1, 1, 1)
-        if baubleRow.CreateMaskTexture then
-            local mask = baubleRow:CreateMaskTexture()
-            if mask then -- round baubles; without a mask they stay square
-                mask:SetTexture(ROUND_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-                mask:SetAllPoints(b)
-                b:AddMaskTexture(mask)
-            end
-        end
+        b:SetSize(BAUBLE_W, BAUBLE_H)
         baubles[i] = b
     end
     return b
@@ -118,16 +109,15 @@ local function UpdateCombo()
     lastCur, lastMax = cur, max
     ns.baubleCount = cur -- for /bs trace
     if not inCombat then UpdateAlpha() end
-    local rowWidth = max * BAUBLE + (max - 1) * BAUBLE_GAP
-    baubleRow:SetSize(rowWidth, BAUBLE)
+    local rowWidth = max * BAUBLE_W + (max - 1) * BAUBLE_GAP
+    baubleRow:SetSize(rowWidth, BAUBLE_H)
     for i = 1, MAX_BAUBLES do
         local b = baubles[i]
         if i <= max then
             b = Bauble(i)
             b:ClearAllPoints()
-            b:SetPoint("LEFT", baubleRow, "LEFT", (i - 1) * (BAUBLE + BAUBLE_GAP), 0)
-            local c = (i <= cur) and BAUBLE_ON or BAUBLE_OFF
-            b:SetVertexColor(c[1], c[2], c[3])
+            b:SetPoint("LEFT", baubleRow, "LEFT", (i - 1) * (BAUBLE_W + BAUBLE_GAP), 0)
+            b:SetTexture(i <= cur and DROP_FULL or DROP_EMPTY)
             b:Show()
         elseif b then
             b:Hide()
@@ -202,7 +192,7 @@ function ns.SetupBar()
     -- child of the bar, so it shares its opacity and visibility
     baubleRow = CreateFrame("Frame", nil, bar)
     baubleRow:SetPoint("TOP", bar, "BOTTOM", 0, -5)
-    baubleRow:SetSize(1, BAUBLE)
+    baubleRow:SetSize(1, BAUBLE_H)
 
     bar:SetScript("OnEvent", function(_, event, unit, token)
         if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
