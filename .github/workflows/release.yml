@@ -2,6 +2,7 @@
 # release with the same zip. The tag must match ## Version in the TOC, and
 # CHANGELOG.md needs a "## <version>" section (tools/release.sh checks both).
 # Release type from the version: 1.2.3-alpha1 alpha, 1.2.3-beta1 beta, 1.2.3 release.
+# A tag message containing [no-curseforge] makes a GitHub release only.
 name: Release
 on:
   push:
@@ -16,6 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fetch the annotated tag
+        run: git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
       - name: Upload to CurseForge
         id: cf
         env:

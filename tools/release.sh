@@ -18,6 +18,7 @@
 # --dry-run does everything except the upload and the tag.
 # --ci: HEAD must already be tagged v<version>; no tag is created. Writes
 # dist/RELEASE_NOTES.md and, under Actions, version/type/zip to $GITHUB_OUTPUT.
+# A tag message containing [no-curseforge] skips the upload (GitHub release only).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -76,6 +77,11 @@ echo "release:  Bloody Screen Forever $version ($type)"
 echo "project:  $project   game version: $gv (Interface $interface)"
 echo "zip:      $zip"
 echo "notes:"; sed 's/^/  | /' <<<"$notes"
+
+if [[ $ci -eq 1 ]] && git tag -l --format='%(contents)' "v$version" | grep -qF '[no-curseforge]'; then
+    echo "tag message has [no-curseforge]: skipping the CurseForge upload"
+    exit 0
+fi
 
 api="https://wow.curseforge.com/api"
 CF_API_TOKEN=${CF_API_TOKEN:-${API_TOKEN:-}}
