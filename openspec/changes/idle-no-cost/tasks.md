@@ -47,7 +47,7 @@ Append them at the end of the harness, before the failures summary. The end stat
 
 Everything else (idle detection, every wake, fades, timers, crossfade, bar opacity and hide rules, `/bs test`, the debug line) is covered by the harness in groups 1 and 5. This check measures the one unmeasured API behaviour and confirms the idle state on the real client. It runs alongside implementation; it does not block it.
 
-- [ ] 6.1 Rogue (or cat druid), out of combat: `/bs trace`, put combo points on mob A, target mob B, then A again, waiting a few seconds each time; then `/reload` with points on a target and `/bs trace` again right after; stop the trace. Beads and splatters should follow each switch as before. Stand still at full energy with no target for 5 s, `/bs debug`, `/reload`, and ask for the saved variables to be read. Pass: every `GetComboPoints(player,target) = N` trace line lands under 3 s after its `PLAYER_TARGET_CHANGED` (or after the trace start following the reload), and the debug line reads `idle: splatters=idle bar=idle`. If a count lands later, raise `ns.COMBO_SETTLE` to the measured delay plus margin (nothing else changes). If anything looked different from before, say so; the same saved variables show the state
+- [ ] 6.1 Clear your target, stand still at full energy for 5 s, then `/bs debug`: the chat shows `idle: splatters=idle bar=idle`. (Owner decision 2026-11-22: the out-of-combat late-combo-count measurement is dropped. Switching targets with combo points out of combat practically only happens in PvP, and the worst case is beads updating a moment late; `ns.COMBO_SETTLE` stays 3 s, about 3x the ~1 s measured in combat. Left to a bug report.)
 
 ## Workflow follow-up
 
