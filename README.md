@@ -90,7 +90,9 @@ Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
   with `MOD` blending so the blood stains the scene rather than covering it.
 - **Combo points.** Slots 1..N are shown for N points. Slots above N fade.
   On Forever, combo points are tied to the target (as in vanilla). The count
-  comes from `GetComboPoints("player", "target")`, polled. A `/bs trace` on
+  comes from `GetComboPoints("player", "target")`, polled while there is
+  something to show, in combat, or for 3 s after a target switch or loading
+  screen (otherwise the addon does no per-frame work at all). A `/bs trace` on
   build 16001 showed:
   - `UnitPower("player", ComboPoints)` only changes on gain or spend, so it
     stays stale across a target switch.
@@ -223,8 +225,9 @@ CI runs the same lint and harness.
 
 Chat can't be copied, so the diagnostics are written to the saved variables:
 
-- `/bs debug` prints the combo point read, crit counters and energy bar state,
-  and saves them under `debug`.
+- `/bs debug` prints the combo point read, crit counters, energy bar state and
+  whether the two per-frame scripts are running or idle (`idle: splatters=…
+  bar=…`), and saves them under `debug`.
 - `/bs trace` toggles a log of every combo point source and event, saved under
   `trace`, up to 1,000 lines.
 - The user runs `/reload` to write the file, then (with permission) read the

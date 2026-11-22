@@ -19,29 +19,29 @@
 
 ## 4. `/bs debug` line and docs
 
-- [ ] 4.1 `/bs debug`: one line `idle: splatters=running|idle bar=running|idle`, saved into `db.debug` like the others; verify with a harness check that captures the printed lines (as the existing crit-line check does) and finds the line with both values
-- [ ] 4.2 README "Getting data out of the game": `/bs debug` also says whether the per-frame scripts are running; "Combo points" bullets: polled while there is something to show, in combat, or just after a target switch; verify by reading
-- [ ] 4.3 CHANGELOG under `## Unreleased`: the addon now does nothing between fights (no per-frame work while nothing is shown), `/bs debug` shows it; no TOC version bump; verify by reading the section
+- [x] 4.1 `/bs debug`: one line `idle: splatters=running|idle bar=running|idle`, saved into `db.debug` like the others; verify with a harness check that captures the printed lines (as the existing crit-line check does) and finds the line with both values
+- [x] 4.2 README "Getting data out of the game": `/bs debug` also says whether the per-frame scripts are running; "Combo points" bullets: polled while there is something to show, in combat, or just after a target switch; verify by reading
+- [x] 4.3 CHANGELOG under `## Unreleased`: the addon now does nothing between fights (no per-frame work while nothing is shown), `/bs debug` shows it; no TOC version bump; verify by reading the section
 
 ## 5. New harness checks (automated; all must PASS)
 
 Append them at the end of the harness, before the failures summary. The end state there is a fresh DB from the migration check (`critshared`, max 6), a warrior, `GetComboPoints` nil: start the group with `/bs default`, then set the class per check (rogue for 5.1, 5.5, 5.6).
 
 
-- [ ] 5.1 Idle: rogue out of combat (`fire("PLAYER_REGEN_ENABLED")`, `barState.onEvent(nil, "PLAYER_REGEN_ENABLED")`), full readable energy, no combo points, `ns.ClearNow()`, then `run(ns.COMBO_SETTLE + 0.5)` → `scripts.OnUpdate == nil` and `barState.onUpdate == nil`, bar alpha 0, no splatters
-- [ ] 5.2 Wake by crit: warrior, `crittimed`, in combat, crit while idle → `scripts.OnUpdate ~= nil` and 1 splatter; `run(ns.db.timer + 1)` → splatter gone and `scripts.OnUpdate == nil` again (warrior in combat with nothing shown idles)
-- [ ] 5.3 Warrior in combat, nothing shown: after `barState.onEvent(nil, "PLAYER_REGEN_DISABLED")` and one poll tick, `barState.onUpdate == nil`; a rage power event wakes it and the bar value updates (`barState.value`)
-- [ ] 5.4 Wake by `/bs test` while idle: script attached, `ns.db.max` splatters shown; after `run(4.6)` none shown and script detached
-- [ ] 5.5 Wake by target switch, out of combat, rogue on Automatic, while idle: `fire("PLAYER_TARGET_CHANGED")` + `barState.onEvent(nil, "PLAYER_TARGET_CHANGED")` with `GetComboPoints` returning 0, then 2 after 0.9 s with no event → 2 beads lit and 2 splatters fading in (step > 1 at first), both scripts attached; after spending to 0 by event and `run(ns.COMBO_SETTLE + 1)` → both detached
-- [ ] 5.6 Combat start keeps the combo poll: rogue idle, `fire("PLAYER_REGEN_DISABLED")` + bar event → both scripts stay attached after `run(ns.COMBO_SETTLE + 1)` with 0 points; a silent count change (no event) is picked up (as today's "baubles follow a late, eventless count change")
-- [ ] 5.7 Bar quiet period: idle bar, a power event (`energy=80`) wakes it and shows it at idle opacity; `energy=100` + event, `run(3.1)` → alpha 0 and `barState.onUpdate == nil`
-- [ ] 5.8 Settings: `ns.ApplyBar()` while idle reattaches the bar poll, which detaches again on its next 0.05 s tick (ApplyBar touches neither the quiet nor the settle timestamp); changing the trigger (`mode(...)`, which calls `ClearNow`) reattaches the splatter script for one pass, then it detaches
-- [ ] 5.10 Loading screen: rogue idle, `fire("PLAYER_ENTERING_WORLD")` + bar event, then `GetComboPoints` goes 0 → 2 after 1 s with no event → 2 beads and 2 splatters, both scripts attached until the points go and the settle window passes
-- [ ] 5.11 Settle window edge: a late eventless count arriving at `ns.COMBO_SETTLE - 0.1` s after an out-of-combat switch is still picked up (beads and splatters); the scripts detach once `ns.COMBO_SETTLE` has passed with 0 points
-- [ ] 5.12 Idle debug line: in the idle state of 5.1, `/bs debug` prints `idle: splatters=idle bar=idle`; right after a crit in combat it prints `splatters=running` (extends 4.1)
-- [ ] 5.13 Trace stays free: capture the `/bs trace` frame in the `CreateFrame` stub; it is hidden (so gets no OnUpdate) before `/bs trace`, shown while tracing, hidden again after the second `/bs trace`
-- [ ] 5.14 Crit and bar behaviour unchanged with the scripts idling between events: rerun the existing warrior checks (crit splatters, timer fade, rage bar hide/show) after an idle stretch (`run(ns.COMBO_SETTLE + 1)` with nothing shown) and they give the same results
-- [ ] 5.9 Run the full suite: `luacheck BloodyScreenForever/` clean and `luajit tests/harness.lua BloodyScreenForever` all PASS, with no existing check's expectation edited; `openspec validate idle-no-cost --strict` passes
+- [x] 5.1 Idle: rogue out of combat (`fire("PLAYER_REGEN_ENABLED")`, `barState.onEvent(nil, "PLAYER_REGEN_ENABLED")`), full readable energy, no combo points, `ns.ClearNow()`, then `run(ns.COMBO_SETTLE + 0.5)` → `scripts.OnUpdate == nil` and `barState.onUpdate == nil`, bar alpha 0, no splatters
+- [x] 5.2 Wake by crit: warrior, `crittimed`, in combat, crit while idle → `scripts.OnUpdate ~= nil` and 1 splatter; `run(ns.db.timer + 1)` → splatter gone and `scripts.OnUpdate == nil` again (warrior in combat with nothing shown idles)
+- [x] 5.3 Warrior in combat, nothing shown: after `barState.onEvent(nil, "PLAYER_REGEN_DISABLED")` and one poll tick, `barState.onUpdate == nil`; a rage power event wakes it and the bar value updates (`barState.value`)
+- [x] 5.4 Wake by `/bs test` while idle: script attached, `ns.db.max` splatters shown; after `run(4.6)` none shown and script detached
+- [x] 5.5 Wake by target switch, out of combat, rogue on Automatic, while idle: `fire("PLAYER_TARGET_CHANGED")` + `barState.onEvent(nil, "PLAYER_TARGET_CHANGED")` with `GetComboPoints` returning 0, then 2 after 0.9 s with no event → 2 beads lit and 2 splatters fading in (step > 1 at first), both scripts attached; after spending to 0 by event and `run(ns.COMBO_SETTLE + 1)` → both detached
+- [x] 5.6 Combat start keeps the combo poll: rogue idle, `fire("PLAYER_REGEN_DISABLED")` + bar event → both scripts stay attached after `run(ns.COMBO_SETTLE + 1)` with 0 points; a silent count change (no event) is picked up (as today's "baubles follow a late, eventless count change")
+- [x] 5.7 Bar quiet period: idle bar, a power event (`energy=80`) wakes it and shows it at idle opacity; `energy=100` + event, `run(3.1)` → alpha 0 and `barState.onUpdate == nil`
+- [x] 5.8 Settings: `ns.ApplyBar()` while idle reattaches the bar poll, which detaches again on its next 0.05 s tick (ApplyBar touches neither the quiet nor the settle timestamp); changing the trigger (`mode(...)`, which calls `ClearNow`) reattaches the splatter script for one pass, then it detaches
+- [x] 5.10 Loading screen: rogue idle, `fire("PLAYER_ENTERING_WORLD")` + bar event, then `GetComboPoints` goes 0 → 2 after 1 s with no event → 2 beads and 2 splatters, both scripts attached until the points go and the settle window passes
+- [x] 5.11 Settle window edge: a late eventless count arriving at `ns.COMBO_SETTLE - 0.1` s after an out-of-combat switch is still picked up (beads and splatters); the scripts detach once `ns.COMBO_SETTLE` has passed with 0 points
+- [x] 5.12 Idle debug line: in the idle state of 5.1, `/bs debug` prints `idle: splatters=idle bar=idle`; right after a crit in combat it prints `splatters=running` (extends 4.1)
+- [x] 5.13 Trace stays free: capture the `/bs trace` frame in the `CreateFrame` stub; it is hidden (so gets no OnUpdate) before `/bs trace`, shown while tracing, hidden again after the second `/bs trace`
+- [x] 5.14 Crit and bar behaviour unchanged with the scripts idling between events: rerun the existing warrior checks (crit splatters, timer fade, rage bar hide/show) after an idle stretch (`run(ns.COMBO_SETTLE + 1)` with nothing shown) and they give the same results
+- [x] 5.9 Run the full suite: `luacheck BloodyScreenForever/` clean and `luajit tests/harness.lua BloodyScreenForever` all PASS, with no existing check's expectation edited; `openspec validate idle-no-cost --strict` passes
 
 ## 6. In-game check (only what needs the real game)
 

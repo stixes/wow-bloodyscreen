@@ -266,6 +266,7 @@ function ns.SetupBar()
             bar:SetScript("OnUpdate", BarUpdate)
         end
     end
+    awake = false -- a new frame has no script yet
     bar:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
     bar:RegisterUnitEvent("UNIT_MAXPOWER", "player")
     bar:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")

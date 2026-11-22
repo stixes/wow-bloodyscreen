@@ -19,6 +19,7 @@ UIParent = setmetatable({GetWidth=function() return 1920 end, GetHeight=function
 CreateFrame = function(_, name, parent, template)
   local f = {w=0,h=0,name=name}
   if parent and parent.name == "BloodyScreenForeverEnergyBar" and not template then barState.row = f end
+  if name == nil and parent == nil then barState.tracer = f end -- the /bs trace frame
   function f:SetScript(n, fn)
     if self.name == "BloodyScreenForeverFrame" then scripts[n] = fn
     elseif self.name == "BloodyScreenForeverEnergyBar" then
@@ -359,6 +360,104 @@ BloodyScreenForeverDB = { mode="critshared", strict=true, max=6, version=9 }
 fire("ADDON_LOADED","BloodyScreenForever")
 check("migration 9 -> 10: strict dropped, trigger and max kept",
     ns.db.version == 10 and ns.db.strict == nil and ns.db.mode == "critshared" and ns.db.max == 6)
+
+-- idle-no-cost: no per-frame work while nothing is shown or pending ------
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("default"); print = realPrint
+local function attached() return scripts.OnUpdate ~= nil, barState.onUpdate ~= nil end
+local function setClass(c, pt, tok)
+  playerClass, ptype, ptoken = c, pt, tok
+  fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+end
+local function outOfCombat()
+  inCombatFlag = false; fire("PLAYER_REGEN_ENABLED"); barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+end
+local function debugIdle()
+  printed = {}
+  print = function(...) printed[#printed+1] = table.concat({...}, " ") end
+  SlashCmdList.BLOODYSCREENFOREVER("debug")
+  print = realPrint
+  for _, l in ipairs(printed) do local x, y = l:match("idle: splatters=(%a+) bar=(%a+)") if x then return x, y end end
+end
+local onT = 0
+GetComboPoints = function(_, tgt) if tgt ~= "target" then error("needs target") end return onT end
+secretPower, secret, energy, rage, power, cpMax = false, false, 100, 0, 0, 5
+local function spend() onT = 0; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS") end
+local function switch() fire("PLAYER_TARGET_CHANGED"); barState.onEvent(nil, "PLAYER_TARGET_CHANGED") end
+
+-- 5.1 idle rogue
+setClass("ROGUE", 3, "ENERGY"); outOfCombat(); ns.ClearNow(); run(ns.COMBO_SETTLE + 0.5)
+local a, b = attached()
+check("idle: rogue out of combat, full energy, no points -> both per-frame scripts detached, bar hidden, no splatters",
+  not a and not b and barState.alpha == 0 and vis() == 0)
+-- 5.12 debug line
+local ds, db_ = debugIdle()
+check("/bs debug idle line when idle: splatters="..tostring(ds).." bar="..tostring(db_), ds == "idle" and db_ == "idle")
+-- 5.7 bar quiet period
+energy = 80; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); a, b = attached()
+check("idle: a power event wakes the bar poll and shows the bar", b and barState.alpha == ns.db.barAlphaIdle)
+energy = 100; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); run(3.1); a, b = attached()
+check("idle: back at full, 3 s later -> bar hidden and its poll detached", not b and barState.alpha == 0)
+-- 5.8 settings
+ns.ApplyBar(); a, b = attached(); local woke = b; run(0.1); a, b = attached()
+check("idle: a bar setting change reattaches the poll for one tick, then it detaches", woke and not b)
+mode("crittimed"); a = attached(); woke = a; run(0.04); a = attached()
+check("idle: a trigger change reattaches the splatter script for one pass, then it detaches", woke and not a)
+ns.db.mode = "auto"; ns.ClearNow(); run(0.04)
+-- 5.5 target switch with a late, eventless count
+run(ns.COMBO_SETTLE + 0.5); onT = 0; switch(); run(0.9); onT = 2; run(0.1)
+local on = baub(); local n, st = splat(); a, b = attached()
+check("idle: target switch + late eventless count -> 2 beads, 2 splatters fading in, both scripts attached ("..on..", "..n..", step "..tostring(st[#st])..")",
+  on == 2 and n == 2 and st[#st] > 1 and a and b)
+run(1); spend(); run(ns.COMBO_SETTLE + 1); a, b = attached()
+check("idle: points spent, settle window passed -> no splatters, both detached", vis() == 0 and not a and not b)
+-- 5.11 settle window edge
+switch(); run(ns.COMBO_SETTLE - 0.12); onT = 1; run(0.06); on = baub()
+check("settle window edge: a count arriving just inside the window still shows ("..on.." bead, "..vis().." splatter)", on == 1 and vis() == 1)
+run(1); spend(); run(ns.COMBO_SETTLE + 1)
+switch(); run(ns.COMBO_SETTLE + 0.2); a, b = attached()
+check("settle window: a switch with no points -> both detach once the window has passed", not a and not b)
+-- 5.10 loading screen
+fire("PLAYER_ENTERING_WORLD"); barState.onEvent(nil, "PLAYER_ENTERING_WORLD"); run(1); onT = 2; run(0.1)
+on = baub(); a, b = attached()
+check("loading screen: a late eventless count -> 2 beads, 2 splatters, both attached", on == 2 and vis() == 2 and a and b)
+run(0.5); spend(); run(ns.COMBO_SETTLE + 1); a, b = attached()
+check("loading screen: then idle again", vis() == 0 and not a and not b)
+-- 5.6 combat keeps the combo poll (REGEN event only)
+fire("PLAYER_REGEN_DISABLED"); barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); run(ns.COMBO_SETTLE + 1); a, b = attached()
+check("rogue in combat: both scripts stay attached with 0 points", a and b)
+onT = 2; run(0.1); on = baub()
+check("rogue in combat: a silent count change is picked up ("..on.." beads, "..vis().." splatters)", on == 2 and vis() == 2)
+run(0.5); spend(); outOfCombat(); run(ns.COMBO_SETTLE + 1); a, b = attached()
+check("rogue leaves combat: idle again", vis() == 0 and not a and not b)
+-- 5.4 /bs test while idle
+SlashCmdList.BLOODYSCREENFOREVER("test"); a = attached()
+check("idle: /bs test reattaches the splatter script and previews "..vis(), a and vis() == ns.db.max)
+run(4.8); a = attached(); check("idle: preview fades, then the script detaches", vis() == 0 and not a)
+-- 5.3 / 5.2 warrior
+setClass("WARRIOR", 1, "RAGE"); outOfCombat(); run(ns.COMBO_SETTLE + 0.5)
+inCombatFlag = true; fire("PLAYER_REGEN_DISABLED"); barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); run(0.1); a, b = attached()
+check("warrior in combat, nothing shown: both scripts detached", not a and not b)
+rage = 20; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "RAGE"); a, b = attached()
+check("warrior in combat: a rage event updates the bar value and wakes the poll", barState.value == 20 and b)
+run(0.1); a, b = attached(); check("warrior in combat: the bar poll detaches again", not b)
+crit(); a = attached(); check("warrior in combat: a crit wakes the splatter script (1 shown)", a and vis() == 1)
+ds = debugIdle(); check("/bs debug idle line with a splatter up: splatters="..tostring(ds), ds == "running")
+run(ns.db.timer + 1); a = attached()
+check("warrior: the crit splatter fades on the timer, then the script detaches", vis() == 0 and not a)
+-- 5.14 rage bar rules after an idle stretch
+outOfCombat(); rage = 0; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "RAGE"); run(ns.COMBO_SETTLE + 0.5)
+a, b = attached(); check("warrior out of combat, rage empty: bar hidden, both idle", barState.alpha == 0 and not a and not b)
+rage = 30; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "RAGE")
+check("warrior after an idle stretch: rage gained -> bar shown at idle opacity", barState.alpha == ns.db.barAlphaIdle)
+rage = 0; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "RAGE"); run(3.1); a, b = attached()
+check("warrior: rage decayed -> hidden again, poll detached", barState.alpha == 0 and not b)
+-- 5.13 /bs trace frame
+local tr = barState.tracer
+local hiddenBefore = tr and not tr:IsShown()
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("trace"); local shownDuring = tr and tr:IsShown()
+SlashCmdList.BLOODYSCREENFOREVER("trace"); print = realPrint
+check("/bs trace frame is hidden (no OnUpdate) except while tracing", hiddenBefore and shownDuring and not tr:IsShown())
+GetComboPoints = nil
 
 check("never idle with a splatter on screen: "..idleViolations.." violations", idleViolations == 0)
 
