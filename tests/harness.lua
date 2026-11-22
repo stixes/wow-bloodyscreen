@@ -3,6 +3,7 @@ local dir = arg[1]
 local barState = {}
 local power, combat, inCombatFlag, now, secret = 0, false, false, 100, false
 local scripts, texs = {}, {}
+local barRejectsSecret = false -- self-check: the bar refuses secret values (a patched client)
 local function stub() return setmetatable({}, {__index=function() return function() return stub() end end}) end
 local function Tex()
   local t = {shown=false, path=nil, w=0}
@@ -20,6 +21,7 @@ CreateFrame = function(_, name, parent, template)
   local f = {w=0,h=0,name=name}
   if parent and parent.name == "BloodyScreenForeverEnergyBar" and not template then barState.row = f end
   if name == nil and parent == nil then barState.tracer = f end -- the /bs trace frame
+  if name == "BloodyScreenForeverEnergyBar" then barState.frame = f end
   function f:SetScript(n, fn)
     if self.name == "BloodyScreenForeverFrame" then scripts[n] = fn
     elseif self.name == "BloodyScreenForeverEnergyBar" then
@@ -31,7 +33,7 @@ CreateFrame = function(_, name, parent, template)
   function f:CreateTexture() return Tex() end
   function f:CreateFontString() local fs = {}; function fs:SetText(s) barState.text = s end; return setmetatable(fs, {__index=function() return function() end end}) end
   function f:SetMinMaxValues(a,b) barState.min, barState.max = a, b end
-  function f:SetValue(v) barState.value = v end
+  function f:SetValue(v) if barRejectsSecret and tostring(v) == "SECRET" then error("SetValue: secret refused") end barState.value = v end
   function f:SetShown(v) self.shown = v end
   function f:IsShown() return self.shown ~= false end
   function f:Hide() self.shown = false end
@@ -66,10 +68,13 @@ InCombatLockdown = function() return inCombatFlag end
 GetTime = function() return now end
 local nextFrame = {}
 C_Timer = { After = function(_, fn) nextFrame[#nextFrame+1] = fn end }
-issecretvalue = function(v) return secret and v == "CRITICAL" end
+issecretvalue = function(v) return (secret and v == "CRITICAL") or v == SECRET end
 strsplit = function(_,s) local t={} for w in s:gmatch("%S+") do t[#t+1]=w end return unpack(t) end
 strtrim = function(s) return s:match("^%s*(.-)%s*$") end
-SlashCmdList = {}; GetBuildInfo=function() return "1.60.1","x","y",16001 end
+local buildVer, buildNum, addonVer = "1.60.1", "x", "0.19.0" -- swapped by the self-check checks
+SlashCmdList = {}; GetBuildInfo=function() return buildVer, buildNum, "y", 16001 end
+C_AddOns = { GetAddOnMetadata = function(_, key) if key == "Version" then return addonVer end end }
+date = date or os.date
 MinimalSliderWithSteppersMixin = {Label={Right=1}}
 local nset = 0
 Settings = setmetatable({}, {__index=function() return function() nset=nset+1; return stub(), stub() end end})
@@ -82,6 +87,14 @@ rawset(Settings, "CreateCheckbox", function(_, st, tooltip) nset=nset+1; checkbo
 local instType = "none" -- what IsInInstance reports: "none", "raid", "pvp", "arena", ...
 IsInInstance = function() return instType ~= "none", instType end
 local ns = {}
+local realPrint0 = print
+-- runs fn, returns the addon's prefixed chat lines it printed
+local function capture(fn)
+  local lines = {}
+  print = function(...) local t = {...} for i = 1, select("#", ...) do t[i] = tostring(t[i]) end
+    local l = table.concat(t, " ") if l:find("BloodyScreen|r: ", 1, true) then lines[#lines+1] = l end end
+  local ok, err = pcall(fn); print = realPrint0; assert(ok, err); return lines
+end
 BloodyScreenForeverDB = { mode="combat", enabled=true, minAlpha=0.5, size=300, timer=7, areaW=500, areaH=500, version=nil }
 assert(loadfile(dir.."/BloodyScreenForever.lua"))("BloodyScreenForever", ns)
 assert(loadfile(dir.."/EnergyBar.lua"))("BloodyScreenForever", ns)
@@ -101,9 +114,10 @@ local function check(label, cond)
     if not cond then failures = failures + 1 end
     print((cond and "PASS " or "FAIL ")..label)
 end
-fire("ADDON_LOADED","BloodyScreenForever"); fire("PLAYER_ENTERING_WORLD")
+local firstLogin = capture(function() fire("ADDON_LOADED","BloodyScreenForever"); fire("PLAYER_ENTERING_WORLD") end)
 local keys={} for k,v in pairs(ns.db) do keys[#keys+1]=k.."="..tostring(v) end table.sort(keys)
 print("migrated:", table.concat(keys," "), "| settings calls", nset)
+check("self-check, first install, every check passes: no chat line ("..#firstLogin..")", #firstLogin == 0)
 -- combo
 for i=1,5 do cp(i) end
 check("combo 5 points -> 5 visible, slot shapes 1..5 at step 1: "..shapes(), vis()==5 and shapes()=="1_1,2_1,3_1,4_1,5_1")
@@ -555,6 +569,137 @@ check("upgrade from version 10: gains raids off, battlegrounds on, keeps the res
 BloodyScreenForeverDB = { mode="auto", offInBattlegrounds=false, version=10 }
 fire("ADDON_LOADED","BloodyScreenForever")
 check("a saved untick of Disable in battlegrounds survives a reload", ns.db.offInBattlegrounds == false)
+
+-- patch self-check (api-self-check, splatter-triggers fallback) -------------
+local function login() return capture(function()
+  fire("ADDON_LOADED","BloodyScreenForever"); fire("PLAYER_ENTERING_WORLD"); barState.onEvent(nil, "PLAYER_ENTERING_WORLD") end) end
+local function recLine(prefix) for i, l in ipairs(ns.db.selfcheck or {}) do if i > 1 and l:sub(1, #prefix) == prefix then return l end end return "" end
+local function offCount() local n = 0 for _, v in pairs(ns.off) do if v then n = n + 1 end end return n end
+local function cls(c, pt, tok) playerClass, ptype, ptoken = c, pt, tok end
+local function enterCombat() inCombatFlag = true; fire("PLAYER_REGEN_DISABLED"); barState.onEvent(nil, "PLAYER_REGEN_DISABLED") end
+local function clear() run(ns.db.timer + 1); ns.ClearNow(); run(0.1) end
+local function dbg() return capture(function() SlashCmdList.BLOODYSCREENFOREVER("debug") end) end
+local function gameChanged(lines) local n = 0 for _, l in ipairs(lines) do if l:find("the game changed", 1, true) then n = n + 1 end end return n end
+secret, secretPower, barRejectsSecret, instType, power, energy, rage = false, false, false, "none", 0, 100, 0
+inCombatFlag = false; GetComboPoints = nil; cls("ROGUE", 3, "ENERGY")
+BloodyScreenForeverDB = {}
+local L = login(); local rec = ns.db.selfcheck
+check("self-check, fresh install as a rogue: no line, nothing off ("..#L..", "..offCount()..")", #L == 0 and offCount() == 0)
+check("self-check record: build key, addon version, header with the build, one line per check",
+  rec.build == "1.60.1.x" and rec.version == "0.19.0" and rec[1]:find("build 1.60.1.x addon 0.19.0", 1, true)
+  and recLine("class: ok ROGUE") ~= "" and recLine("power type: ok") ~= "" and recLine("bar write: ok") ~= ""
+  and recLine("power: max=100") ~= "" and recLine("settings: ok") ~= "" and recLine("auto: combo") ~= "" and recLine("crit flag: pending") ~= "")
+check("self-check: GetComboPoints missing, UnitPower readable -> combo ok, fallback noted: "..recLine("combo:"),
+  recLine("combo: ok (fallback") ~= "" and not ns.off.combo)
+GetComboPoints = function() return nil end; power = nil; L = login(); power = 0
+check("self-check: combo reads give nil at login (no target) -> unknown, nothing off, no line: "..recLine("combo:"),
+  recLine("combo: unknown") ~= "" and not ns.off.combo and #L == 0)
+GetComboPoints = function() error("patched") end; L = login()
+check("self-check: GetComboPoints throws, UnitPower readable -> no line, combo stays on, fallback recorded",
+  #L == 0 and not ns.off.combo and recLine("combo: ok (fallback") ~= "")
+GetComboPoints = nil
+
+-- the energy bar refuses the secret power value
+secretPower, barRejectsSecret = true, true
+L = login()
+check("bar write fails: exactly 1 line, naming the energy bar ("..tostring(L[1])..")", #L == 1 and L[1]:find("energy bar") and not L[1]:find("combo"))
+check("bar write fails: bar hidden, recorded off: "..recLine("bar write:"), not barState.frame:IsShown() and recLine("bar write: off") ~= "")
+local okEv = pcall(barState.onEvent, nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("bar write fails: further power events raise no error, bar stays hidden", okEv and not barState.frame:IsShown())
+power = 2; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1)
+check("bar write fails: combo splatters still work ("..vis()..")", vis() == 2)
+power = 0; run(1); ns.ClearNow()
+L = login()
+check("next login, same build, still failing: no line, bar still hidden", #L == 0 and not barState.frame:IsShown())
+buildNum = "y"; rawset(Settings, "RegisterVerticalLayoutCategory", function() error("no panel") end)
+L = login()
+check("build changed, bar and settings panel broken: exactly 1 line naming both, no separate panel line ("..tostring(L[1])..")",
+  #L == 1 and L[1]:find("energy bar and settings panel off", 1, true))
+check("settings off recorded with its error: "..recLine("settings:"), recLine("settings: off") ~= "" and ns.off.settings)
+addonVer = "0.19.1"; L = login()
+check("addon updated, same build, still failing: exactly 1 line again", #L == 1 and L[1]:find("energy bar"))
+rawset(Settings, "RegisterVerticalLayoutCategory", nil); secretPower, barRejectsSecret = false, false
+L = login()
+check("fixed: no line, bar shown again, nothing off", #L == 0 and barState.frame:IsShown() and offCount() == 0)
+
+-- mid-session refusal: the bar switches itself off, silently, no error
+secretPower, barRejectsSecret = true, true
+okEv = pcall(barState.onEvent, nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("bar refuses a value during play: no error, bar hidden, recorded, no line", okEv and not barState.frame:IsShown()
+  and ns.off.bar and recLine("bar write: off") ~= "")
+secretPower, barRejectsSecret = false, false
+L = dbg()
+check("/bs debug after the fix: bar back, no 'the game changed' line", barState.frame:IsShown() and not ns.off.bar and gameChanged(L) == 0)
+check("/bs debug prints the check lines", table.concat(L, "\n"):find("check bar write: ok", 1, true) ~= nil)
+
+-- combo points broken: neither source readable
+GetComboPoints = function() error("patched") end; power = SECRET
+cls("WARRIOR", 1, "RAGE"); L = login()
+check("combo broken on a warrior: no line ("..#L.."), combo off: "..recLine("combo:"), #L == 0 and ns.off.combo and recLine("combo: off") ~= "")
+cls("ROGUE", 3, "ENERGY"); L = login()
+check("then a rogue logs in on the same build: 1 line naming combo points ("..tostring(L[1])..")", #L == 1 and L[1]:find("combo points"))
+check("rogue, combo off, Automatic: trigger in effect is timed crits: "..recLine("auto:"), recLine("auto: crittimed") ~= "")
+local warn = capture(function()
+  fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS"); run(0.2) end)
+check("rogue, combo off: combo point events add no splatters, no beads, no 'not readable' warning",
+  vis() == 0 and not barState.row:IsShown() and #warn == 0)
+energy = 70; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("rogue, combo off: energy bar still updates ("..tostring(barState.value)..")", barState.value == 70)
+enterCombat(); crit(); run(0.1); crit(); run(0.1)
+check("rogue, combo off, Automatic: two crits in combat -> 2 splatters", vis() == 2)
+run(ns.db.timer + 1); check("rogue, combo off: the crit splatters fade after the timer", vis() == 0)
+cls("DRUID", 3, "ENERGY"); fire("UNIT_DISPLAYPOWER", "player"); run(0.1); crit(); run(0.1)
+check("cat druid, combo off, Automatic: crits splatter", vis() == 1); clear()
+cls("ROGUE", 3, "ENERGY"); fire("UNIT_DISPLAYPOWER", "player"); ns.db.mode = "combo"; ns.ClearNow()
+crit(); fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.2)
+check("rogue, combo off, explicit Combo points: neither crits nor combo points splatter", vis() == 0)
+ns.db.mode = "auto"; ns.ClearNow()
+local onT2 = 0; GetComboPoints = function(_, t) if t ~= "target" then error("needs target") end return onT2 end; power = 0
+L = dbg()
+check("/bs debug with combo points readable again: combo on, no 'the game changed' line", not ns.off.combo and gameChanged(L) == 0)
+onT2 = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(0.1); crit(); run(0.1)
+check("rogue, combo back on, Automatic: follows combo points (3), crits add none ("..vis()..")", vis() == 3)
+onT2 = 0; run(1); ns.ClearNow(); GetComboPoints = nil
+
+-- class token hidden / not known yet
+inCombatFlag = false; fire("PLAYER_REGEN_ENABLED")
+buildNum = "z"; cls(SECRET, 1, "RAGE")
+local okCls; okCls, L = pcall(login)
+check("class token secret on a warrior: no error, 1 line naming combo points ("..tostring(L and L[1])..")",
+  okCls and #L == 1 and L[1]:find("combo points"))
+enterCombat(); crit(); run(0.1)
+check("class secret: Automatic gives crit splatters", vis() == 1); clear()
+buildNum = "w"; cls(nil, 1, "RAGE"); L = login()
+check("class not known yet (nil): no line, nothing off: "..recLine("class:"), #L == 0 and offCount() == 0 and recLine("class: unknown") ~= "")
+cls("WARRIOR", 1, nil); L = login()
+check("power type not known yet (nil): no line, nothing off", #L == 0 and offCount() == 0)
+cls("WARRIOR", 1, SECRET); local okTok = pcall(login)
+check("power type token secret: no error, bar off", okTok and ns.off.bar ~= nil)
+cls("WARRIOR", 1, "RAGE"); login()
+
+-- crit flag
+buildNum = "v"; ns.db.mode = "auto"; L = login(); enterCombat()
+L = capture(function() crit(); run(0.1); fire("UNIT_COMBAT","target","WOUND","",10,1); run(0.1) end)
+check("crit flag readable: nothing printed, record ok: "..recLine("crit flag:"), #L == 0 and recLine("crit flag: ok") ~= "")
+secret = true
+L = capture(function() crit(); run(0.1) end)
+check("crit flag hidden on a warrior: exactly 1 line naming crit splatters ("..tostring(L[1])..")", #L == 1 and L[1]:find("crit splatters"))
+L = capture(function() crit(); run(0.1); crit(); run(0.1) end)
+check("crit flag hidden: later hits print nothing, recorded off", #L == 0 and recLine("crit flag: off") ~= "" and ns.off.crits)
+clear(); buildNum = "u"; cls("ROGUE", 3, "ENERGY"); login(); enterCombat()
+L = capture(function() crit(); run(0.1) end)
+check("crit flag hidden on a rogue on Automatic: recorded, no line", #L == 0 and recLine("crit flag: off") ~= "")
+secret = false; inCombatFlag = false; fire("PLAYER_REGEN_ENABLED")
+
+-- /bs debug with nothing changed keeps the splatters; help has no selftest
+cls("WARRIOR", 1, "RAGE"); login(); enterCombat(); crit(); run(0.1); crit(); run(0.1)
+local before = vis(); L = dbg()
+check("/bs debug with nothing changed leaves the splatters on screen ("..before.." -> "..vis()..")", before == 2 and vis() == 2 and gameChanged(L) == 0)
+clear(); inCombatFlag = false; fire("PLAYER_REGEN_ENABLED")
+printed = {}
+print = function(...) printed[#printed+1] = table.concat({...}, " ") end; SlashCmdList.BLOODYSCREENFOREVER("help"); print = realPrint
+check("/bs help lists no selftest command", not table.concat(printed, "\n"):lower():find("selftest"))
+check("never idle with a splatter on screen (incl. self-check): "..idleViolations.." violations", idleViolations == 0)
 
 if failures > 0 then
     print(("%d check(s) failed"):format(failures))

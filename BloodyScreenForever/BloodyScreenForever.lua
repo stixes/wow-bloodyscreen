@@ -35,6 +35,7 @@ local BLOOD_RADIUS = 0.75  -- the blood fills roughly this share of a texture's 
 local PLACE_TRIES = 60
 local PlaceSplatter
 local Wake, Sleep -- attach / detach the per-frame script (defined with it below)
+local SelfCheck, NoteCritFlag -- the patch self-check (defined near the end)
 
 local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
 
@@ -72,14 +73,38 @@ ns.DEFAULTS = {
 
 local db
 
+-- Parts switched off by the self-check because the game no longer gives them
+-- what they need: part ("bar", "combo", "crits", "settings") -> reason.
+ns.off = {}
+
+---------------------------------------------------------------------------
+-- Secret-value guards
+---------------------------------------------------------------------------
+local function IsSecret(v)
+    return issecretvalue ~= nil and issecretvalue(v) == true
+end
+
+local function Readable(v)
+    if v == nil or not IsSecret(v) then return true end
+    return canaccessvalue ~= nil and canaccessvalue(v) == true
+end
+
+-- A unit token (class, power type) as a plain string, or nil when it is
+-- missing, unreadable or the call fails. Never compared while secret.
+local function Token(f, ...)
+    local ok, _, v = pcall(f, ...)
+    if ok and v ~= nil and Readable(v) and type(v) == "string" then return v end
+    return nil
+end
+
 -- Who has combo points: rogues, and druids in cat form (energy). Decided by
 -- class rather than UnitPowerMax(ComboPoints), which other classes may report.
+-- An unreadable class or power type counts as "no combo points".
 local function HasComboPoints()
-    local _, class = UnitClass("player")
+    local class = Token(UnitClass, "player")
     if class == "ROGUE" then return true end
     if class == "DRUID" then
-        local _, token = UnitPowerType("player")
-        return token == "ENERGY"
+        return Token(UnitPowerType, "player") == "ENERGY"
     end
     return false
 end
@@ -112,9 +137,12 @@ local function DisabledHere()
 end
 
 -- The trigger in effect; "off" while a disable setting applies here.
+-- Combo points switched off by the self-check: Automatic falls back to timed
+-- crits, an explicit "Combo points" trigger shows nothing.
 local function ResolveMode()
     local m = db.mode
-    if m == "auto" then m = HasComboPoints() and "combo" or AUTO_CRIT end
+    if m == "auto" then m = (HasComboPoints() and not ns.off.combo) and "combo" or AUTO_CRIT end
+    if m == "combo" and ns.off.combo then m = "off" end
     if DisabledHere() then m = "off" end
     local changed = m ~= mode
     mode = m
@@ -148,18 +176,6 @@ area:EnableMouse(false)
 
 local function Print(msg) print(PREFIX .. msg) end
 
----------------------------------------------------------------------------
--- Secret-value guards
----------------------------------------------------------------------------
-local function IsSecret(v)
-    return issecretvalue ~= nil and issecretvalue(v) == true
-end
-
-local function Readable(v)
-    if v == nil or not IsSecret(v) then return true end
-    return canaccessvalue ~= nil and canaccessvalue(v) == true
-end
-
 -- Returns current combo points, or nil if unreadable.
 -- Combo points on your current target. On Forever they are tied to the target
 -- (as in vanilla): GetComboPoints("player", "target") follows target switches
@@ -180,7 +196,7 @@ ns.ComboOnTarget = ComboOnTarget
 local function ReadCombo()
     local cur = ComboOnTarget()
     if not cur then
-        if not warnedSecret and db and mode == "combo" then
+        if not warnedSecret and db and mode == "combo" and not ns.off.combo then
             warnedSecret = true
             Print("combo points are not readable on this client (secret value). Try /bs debug, or a crit trigger.")
         end
@@ -488,7 +504,9 @@ end
 -- UNIT_COMBAT(unit, action, flagText, amount, schoolMask)
 local function OnUnitCombat(unit, action, flagText)
     -- Only the "target" token, like the original's destGUID == target.
-    if unit ~= "target" or mode == "combo" or mode == "off" then return end
+    if unit ~= "target" then return end
+    NoteCritFlag(flagText) -- self-check: is the crit flag still readable? (any trigger)
+    if mode == "combo" or mode == "off" then return end
     if not Readable(flagText) then stats.secretFlag = stats.secretFlag + 1 return end
     if flagText ~= "CRITICAL" then return end
     if Readable(action) and action ~= "WOUND" then return end -- heals, misses, etc.
@@ -539,15 +557,23 @@ function handlers.ADDON_LOADED(name)
     area:UnregisterEvent("ADDON_LOADED")
     ns.ApplyLayout()
     if ns.SetupBar then ns.SetupBar() end
+    ns.optionsError = nil
     if ns.BuildOptions then
+        -- a failure is reported by the self-check (once per game build), not here
         local ok, err = pcall(ns.BuildOptions)
-        if not ok then Print("settings panel unavailable (" .. tostring(err) .. "); use /bs help.") end
+        if not ok then ns.optionsError = tostring(err) end
     end
+    ns.selfCheckPending = true -- runs at the next PLAYER_ENTERING_WORLD (unit data is final there)
+    ns.critFlag, ns.off.crits = "pending", nil
 end
 
 function handlers.PLAYER_ENTERING_WORLD()
     settleStart = GetTime() -- combo counts can arrive late after a loading screen too
     ns.ApplyLayout() -- screen size is final here (also resolves "auto"); wakes via ClearNow
+    if ns.selfCheckPending then
+        ns.selfCheckPending = false
+        SelfCheck(true)
+    end
 end
 
 function handlers.UNIT_POWER_UPDATE(_unit, token)
@@ -666,13 +692,170 @@ local function ToggleTrace()
 end
 
 ---------------------------------------------------------------------------
+-- Self-check: after a Forever patch (or on first install) a part whose game
+-- input broke is switched off and named in one chat line, once per game build
+-- and addon version. Runs at every login (cheap, guarded reads) and from
+-- /bs debug; results are saved under db.selfcheck. A check is "ok", "off"
+-- (a call threw, a needed value is a secret addons can't read, or an API is
+-- missing with no fallback) or "unknown" (nil/0 at login: recorded only).
+---------------------------------------------------------------------------
+local PART_NAMES = { bar = "energy bar", combo = "combo points", crits = "crit splatters", settings = "settings panel" }
+local PART_ORDER = { "bar", "combo", "crits", "settings" }
+local classUnreadable = false
+
+local function BuildKey()
+    local ok, v, b = pcall(GetBuildInfo)
+    if not ok then return "?" end
+    return tostring(v) .. "." .. tostring(b)
+end
+
+local function AddonVersion()
+    local f = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if not f then return nil end
+    local ok, v = pcall(f, ADDON, "Version")
+    if ok and v ~= nil and Readable(v) and type(v) == "string" then return v end
+    return nil
+end
+
+-- The saved record; "announced" starts over on a new game build or addon version.
+local function Record()
+    local rec = db.selfcheck
+    if type(rec) ~= "table" then rec = {}; db.selfcheck = rec end
+    local key, ver = BuildKey(), AddonVersion()
+    if type(rec.announced) ~= "table" or rec.build ~= key or (ver and rec.version ~= ver) then
+        rec.announced = {}
+    end
+    rec.build = key
+    if ver then rec.version = ver end
+    return rec
+end
+
+-- Replace (or add) the record line starting with `prefix`.
+local function SetLine(prefix, line)
+    local rec = Record()
+    for i = 2, #rec do
+        if rec[i]:sub(1, #prefix) == prefix then rec[i] = line return end
+    end
+    rec[#rec + 1] = line
+end
+function ns.NoteSelfCheck(line) SetLine(line:match("^[^:]+:"), line) end
+
+-- Does this character use the part? Only then is it named in chat.
+local function Uses(part)
+    if part == "bar" then return db.bar == true end
+    if part == "combo" then return HasComboPoints() or classUnreadable end
+    if part == "crits" then return mode == "crit" or mode == "crittimed" or mode == "critshared" end
+    return true
+end
+
+local function Announce()
+    local rec = Record()
+    local names = {}
+    for _, p in ipairs(PART_ORDER) do
+        if ns.off[p] and not rec.announced[p] and Uses(p) then
+            rec.announced[p] = true
+            names[#names + 1] = PART_NAMES[p]
+        end
+    end
+    if #names == 0 then return end
+    local list = names[#names]
+    if #names > 1 then list = table.concat(names, ", ", 1, #names - 1) .. " and " .. list end
+    Print("the game changed - " .. list .. " off. Details: /bs debug")
+end
+
+-- one guarded read: "num", "none" (nil or an unexpected type) or "bad" (threw / secret)
+local function Src(ok, v)
+    if not ok then return "bad" end
+    if v == nil then return "none" end
+    if not Readable(v) then return "bad" end
+    return type(v) == "number" and "num" or "none"
+end
+
+local function RunChecks()
+    local res = {} -- { part, status, line }
+    local function Add(part, status, line) res[#res + 1] = { part, status, line } end
+    -- class: decides who has combo points
+    local okC, _, class = pcall(UnitClass, "player")
+    classUnreadable = not okC or (class ~= nil and not Readable(class))
+    if classUnreadable then Add("combo", "off", "class: off (" .. (okC and "secret" or "err") .. ")")
+    elseif type(class) == "string" then Add(nil, "ok", "class: ok " .. class)
+    else Add(nil, "unknown", "class: unknown " .. tostring(class)) end
+    -- power type token: colour and resting level of the bar
+    local okP, pt, tok = pcall(UnitPowerType, "player")
+    if not okP or (tok ~= nil and not Readable(tok)) then
+        Add("bar", "off", "power type: off (" .. (okP and "secret" or "err") .. ")")
+    elseif type(tok) == "string" then Add(nil, "ok", ("power type: ok %s/%s"):format(TV(function() return pt end), tok))
+    else Add(nil, "unknown", "power type: unknown " .. tostring(tok)) end
+    -- the power value goes to the bar exactly as during play; never compared
+    if ns.BarSelfTest then
+        local st, line = ns.BarSelfTest()
+        Add(st == "off" and "bar" or nil, st, line)
+    end
+    Add(nil, "ok", ("power: max=%s value=%s"):format(TV(UnitPowerMax, "player", okP and pt or nil),
+        TV(UnitPower, "player", okP and pt or nil)))
+    -- combo points on the target, with UnitPower as the fallback
+    local g = GetComboPoints and Src(pcall(GetComboPoints, "player", "target")) or "bad"
+    local u = Src(pcall(UnitPower, "player", COMBO))
+    local vals = ("GetComboPoints(target)=%s UnitPower=%s"):format(TV(GetComboPoints, "player", "target"),
+        TV(UnitPower, "player", COMBO))
+    if g == "num" then Add(nil, "ok", "combo: ok " .. vals)
+    elseif u == "num" then Add(nil, "ok", "combo: ok (fallback to UnitPower) " .. vals)
+    elseif g == "bad" and u == "bad" then Add("combo", "off", "combo: off " .. vals)
+    else Add(nil, "unknown", "combo: unknown " .. vals) end
+    -- settings panel: built (in a pcall) at ADDON_LOADED
+    if ns.optionsError then Add("settings", "off", "settings: off (" .. ns.optionsError .. ")")
+    else Add(nil, "ok", "settings: ok") end
+    return res
+end
+
+-- Run the checks, switch parts off or back on to match, save the record.
+-- announce: print the one-line message (login only, never from /bs debug).
+SelfCheck = function(announce)
+    local res = RunChecks()
+    local newOff = {}
+    for _, c in ipairs(res) do
+        if c[2] == "off" and c[1] and not newOff[c[1]] then newOff[c[1]] = c[3] end
+    end
+    local comboChanged = (ns.off.combo ~= nil) ~= (newOff.combo ~= nil)
+    local barChanged = (ns.off.bar ~= nil) ~= (newOff.bar ~= nil)
+    ns.off.bar, ns.off.combo, ns.off.settings = newOff.bar, newOff.combo, newOff.settings
+    -- re-apply only what changed: ClearNow wipes the splatters on screen
+    if comboChanged and ResolveMode() then ClearNow() end
+    if (comboChanged or barChanged) and ns.ApplyBar then ns.ApplyBar() end
+    local rec = Record()
+    for i = #rec, 1, -1 do rec[i] = nil end
+    rec[1] = ("%s build %s addon %s project %s"):format(date("%Y-%m-%d %H:%M:%S"), rec.build,
+        tostring(rec.version), tostring(WOW_PROJECT_ID))
+    local lines = {}
+    for _, c in ipairs(res) do lines[#lines + 1] = c[3] end
+    lines[#lines + 1] = "auto: " .. tostring(mode)
+    lines[#lines + 1] = "crit flag: " .. tostring(ns.critFlag or "pending")
+    for _, l in ipairs(lines) do rec[#rec + 1] = l end
+    if announce then Announce() end
+    return lines
+end
+
+-- Every UNIT_COMBAT on the target: the first readable flag marks the check ok,
+-- the first one hidden from addons switches crit splatters off for the session.
+NoteCritFlag = function(flagText)
+    if not db or flagText == nil or ns.critFlag == "off" then return end
+    if Readable(flagText) then
+        if ns.critFlag ~= "ok" then ns.critFlag = "ok"; SetLine("crit flag:", "crit flag: ok") end
+        return
+    end
+    ns.critFlag, ns.off.crits = "off", "secret"
+    SetLine("crit flag:", "crit flag: off (secret)")
+    Announce()
+end
+
+---------------------------------------------------------------------------
 -- Slash commands: /bs opens the settings, /bs reset|default as the original.
 ---------------------------------------------------------------------------
 local function Help()
     Print("/bs opens the settings. Also:")
     print("  /bs test           - preview all splatters")
     print("  /bs reset          - restore defaults")
-    print("  /bs debug          - combo point read and crit counters")
+    print("  /bs debug          - diagnostics and the game check, saved for /reload")
     print("  /bs trace          - log combo point sources and events to chat (toggle)")
 end
 
@@ -713,6 +896,7 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         Log(("zone: IsInInstance=%s/%s offInRaids=%s offInBattlegrounds=%s"):format(
             ZV(zin), ZV(ztype), tostring(db.offInRaids), tostring(db.offInBattlegrounds)))
         if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Log(line) end end
+        for _, line in ipairs(SelfCheck(false)) do Log("check " .. line) end
         Log("saved - /reload to write it to disk")
     else
         Help()

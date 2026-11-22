@@ -79,10 +79,20 @@ local function UpdateAlpha()
     end
 end
 
+-- The bar is switched off for the session (self-check): hidden, no updates.
+local function BarOff(reason)
+    ns.off.bar = reason
+    bar:Hide()
+    if ns.NoteSelfCheck then ns.NoteSelfCheck("bar write: off (" .. reason .. ")") end
+end
+
 local function UpdateValue()
     if not bar:IsShown() then return end
-    bar:SetMinMaxValues(0, UnitPowerMax("player", powerType))
-    bar:SetValue(UnitPower("player", powerType))
+    -- the values go straight to the bar; if a patched client refuses them,
+    -- switch the bar off once instead of raising an error on every power event
+    local ok = pcall(bar.SetMinMaxValues, bar, 0, UnitPowerMax("player", powerType))
+        and pcall(bar.SetValue, bar, UnitPower("player", powerType))
+    if not ok then BarOff("refused during play") return end
     if textOK then
         -- string.format is documented as allowed with secrets; if this client
         -- disagrees, drop the number once and keep the bar.
@@ -108,7 +118,7 @@ end
 local function UpdateCombo()
     if not baubleRow then return end
     local okMax, max = pcall(UnitPowerMax, "player", COMBO)
-    if not (ns.HasComboPoints and ns.HasComboPoints())
+    if ns.off.combo or not (ns.HasComboPoints and ns.HasComboPoints())
         or not okMax or not Readable(max) or type(max) ~= "number" or max <= 0 then
         baubleRow:Hide() -- not a rogue or a druid in cat form (or unreadable)
         lastCur = nil
@@ -139,7 +149,11 @@ end
 
 ---------------------------------------------------------------------------
 local function UpdateType()
-    powerType, powerToken = UnitPowerType("player")
+    local ok, pt, tok = pcall(UnitPowerType, "player")
+    if not ok then pt, tok = nil, nil end
+    -- the token is only kept as a plain string: it is compared and used as a key
+    if not (Readable(tok) and type(tok) == "string") then tok = nil end
+    powerType, powerToken = pt, tok
     local c = Color(powerToken)
     bar:SetStatusBarColor(c.r, c.g, c.b)
     UpdateValue()
@@ -170,12 +184,28 @@ function ns.BarDebug()
     }
 end
 
+-- For the self-check: hand the current power values to the bar, the way every
+-- power event does. Returns "ok" or "off" and a record line. Never compares
+-- or does maths with the power value.
+function ns.BarSelfTest()
+    if not bar then return "unknown", "bar write: unknown (no bar)" end
+    local okT, pt = pcall(UnitPowerType, "player")
+    if not okT then pt = nil end
+    local ok, err = pcall(function()
+        bar:SetMinMaxValues(0, UnitPowerMax("player", pt))
+        bar:SetValue(UnitPower("player", pt))
+    end)
+    if ok then return "ok", "bar write: ok" end
+    return "off", "bar write: off (" .. tostring(err) .. ")"
+end
+
 -- Position, visibility and opacity from settings.
 function ns.ApplyBar()
     if not bar or not ns.db then return end
     bar:ClearAllPoints()
     bar:SetPoint("CENTER", UIParent, "CENTER", 0, ns.db.barY)
-    bar:SetShown(ns.db.bar)
+    bar:SetShown(ns.db.bar and not ns.off.bar)
+    if ns.off.bar then return end -- off for this session (self-check)
     Wake()
     UpdateAlpha()
     if ns.db.bar then UpdateType() end

@@ -25,5 +25,5 @@ read_globals = {
     -- secret values (Midnight/Forever)
     "issecretvalue", "canaccessvalue",
     -- client info and helpers
-    "GetTime", "GetBuildInfo", "WOW_PROJECT_ID", "strtrim", "strsplit", "date",
+    "GetTime", "GetBuildInfo", "WOW_PROJECT_ID", "C_AddOns", "GetAddOnMetadata", "strtrim", "strsplit", "date",
 }
