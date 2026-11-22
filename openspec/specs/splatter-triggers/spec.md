@@ -18,7 +18,7 @@ The Trigger setting SHALL offer "Automatic" alongside the four original triggers
 - **THEN** the Trigger setting is "Automatic"
 
 ### Requirement: Automatic follows combo points on characters that have them
-With Automatic selected, a rogue, or a druid in cat form, SHALL get one splatter per combo point on the current target, exactly as the "Combo points" trigger does, and crits SHALL add no splatters.
+With Automatic selected, a rogue, or a druid in cat form, SHALL get one splatter per combo point on the current target, exactly as the "Combo points" trigger does, and crits SHALL add no splatters, as long as the game lets the addon read combo points.
 
 #### Scenario: Rogue builds combo points
 - **WHEN** a rogue with Automatic selected has 3 combo points on the target
@@ -92,7 +92,7 @@ With a crit trigger in effect (one of the three crit triggers, or Automatic on a
 - **THEN** no splatter appears
 
 #### Scenario: Combo point characters on Automatic
-- **WHEN** a rogue with Automatic selected watches its target take a critical hit from anyone
+- **WHEN** a rogue with Automatic selected, whose combo points can be read, watches its target take a critical hit from anyone
 - **THEN** no splatter is added for the crit
 
 ### Requirement: Crit splatters appear only while the player is in combat
@@ -235,3 +235,22 @@ If the client doesn't tell the addon what kind of instance the player is in, spl
 #### Scenario: Instance type unavailable
 - **WHEN** both disable settings are ticked and the client gives no readable instance type
 - **THEN** crits on the target in combat splatter as usual
+
+### Requirement: Automatic falls back to timed crits when combo points can't be read
+With Automatic selected, when the game no longer lets the addon read combo points, a rogue or a druid in cat form SHALL get timed crit splatters exactly as a character without combo points does. The explicit "Combo points" trigger SHALL show no splatters while combo points can't be read. When combo points become readable again, Automatic SHALL follow them again.
+
+#### Scenario: Rogue after a patch that hides combo points
+- **WHEN** combo points can't be read and a rogue with Automatic selected is in combat while its target takes two critical hits
+- **THEN** 2 splatters are on screen, and each fades once the timer has passed
+
+#### Scenario: Cat druid after the same patch
+- **WHEN** combo points can't be read and a druid in cat form with Automatic selected is in combat while its target takes a critical hit
+- **THEN** a splatter appears
+
+#### Scenario: Explicit Combo points trigger
+- **WHEN** combo points can't be read and a rogue has "Combo points" selected
+- **THEN** no splatters appear, from combo points or from crits
+
+#### Scenario: Combo points readable again
+- **WHEN** a later check finds combo points readable again for a rogue with Automatic selected
+- **THEN** splatters follow combo points again and crits add none
