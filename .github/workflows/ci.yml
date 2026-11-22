@@ -17,3 +17,15 @@ jobs:
         run: for f in BloodyScreenForever/*.lua; do luajit -bl "$f" > /dev/null; done
       - name: Harness
         run: luajit tests/harness.lua BloodyScreenForever
+  openspec:
+    runs-on: ubuntu-latest
+    env:
+      OPENSPEC_TELEMETRY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate specs and changes
+        # same CLI version as the dev machine; bump both together
+        run: npx -y @fission-ai/openspec@2.1.1 validate --all --strict --no-interactive

@@ -40,6 +40,7 @@ tools/release.sh                      upload to CurseForge (run by the release w
 tools/forever-patch.sh                bump the TOC for a new Forever version
 tests/harness.lua                     stubbed-API test harness
 .github/workflows/                    CI, release on tag, Forever patch watch
+openspec/                             OpenSpec config, specs and change proposals
 ```
 
 ## Install
@@ -229,6 +230,24 @@ version and adds a changelog line, and the workflow opens a PR. Test in game,
 check the patch notes for API changes, merge, then tag as above. PRs opened by
 the workflow don't trigger CI on their own; the tag's release run tests
 before uploading. Locally: `envchain curseforge tools/forever-patch.sh --check`.
+
+### Planning changes (OpenSpec)
+
+Changes are planned with [OpenSpec](https://openspec.dev) (CLI 2.1.1; the
+Claude Code skills are installed machine-wide, so the repo only carries
+`openspec/`):
+
+- `openspec/config.yaml` holds the project context every proposal gets (the
+  Forever API facts, testing, release and privacy rules) plus per-artifact
+  rules. Keep it short. After editing it, check it still parses:
+  `openspec instructions proposal --change <name> --json` must contain
+  `context`. A YAML error makes the CLI skip the file with one stderr warning.
+- Flow: `/openspec-explore` (optional) → `/openspec-propose "<idea>"` →
+  review → `/openspec-apply-change` → test in game → `/openspec-archive-change`,
+  which merges the change's delta specs into `openspec/specs/`.
+- `openspec/specs/` starts empty and grows one archived change at a time.
+  Don't backfill specs for code that isn't changing.
+- CI runs `openspec validate --all --strict`.
 
 ### Rules and gotchas
 

@@ -1,0 +1,48 @@
+schema: spec-driven
+
+# Constraints an agent can't read from the code. The README's "Working on this
+# project" section has the full workflow; keep this short, it lands in every prompt.
+context: |
+  WoW addon for WoW Forever (Blizzard's vanilla-style game on the modern
+  Mainline/Midnight client, Interface 16001, game version 1.60.1). Plain Lua 5.1
+  in BloodyScreenForever/, no libraries, no build step. A port of Feador's Bloody
+  Screen: stay faithful to the original's behaviour and keep settings few; new
+  features are welcome but must justify any new setting.
+
+  Forever API facts (measured on build 16001, not in any docs):
+  - The player's primary power is a secret value even out of combat. Never
+    compare it or do maths with it; pass it straight to StatusBar SetValue and
+    SetMinMaxValues. UnitPowerMax is readable.
+  - Combo points follow the target. Read GetComboPoints("player", "target");
+    UnitPower(ComboPoints) stays stale across a target switch, and the new
+    target's count arrives about 1 s later with no event.
+  - InCombatLockdown() is still false inside PLAYER_REGEN_DISABLED; track combat
+    from the REGEN events.
+  - The combat log is closed to addons; crits come from UNIT_COMBAT on "target".
+  - Saved variables are per account, so every class shares one settings table.
+
+  Testing: luajit tests/harness.lua BloodyScreenForever stubs the WoW API
+  (secret values error on maths or comparison) and must stay all PASS; add checks
+  for new behaviour. Real verification is in game and done by the user (/reload
+  for Lua, a full restart for new texture files). Diagnostics go through /bs debug
+  and /bs trace into the saved variables, which are read only when the user asks.
+
+  Releases: bump ## Version in the TOC, add a "## <version>" CHANGELOG.md section,
+  then a pushed v<version> tag publishes to CurseForge and GitHub. Pushing and
+  tagging need the user's go-ahead. Public repo: no personal paths, account names
+  or emails in committed files; no Feador/Resike art.
+
+rules:
+  proposal:
+    - Say which classes or power types the change affects (rogue, warrior, druid forms, others)
+    - Say whether a new setting is needed, and why the existing ones are not enough
+    - Note any API behaviour the change relies on that has not been measured in game yet
+  design:
+    - Every read of a value that may be secret is guarded (issecretvalue, canaccessvalue, pcall)
+    - When the API behaviour is unknown, plan a /bs debug or /bs trace measurement first
+  specs:
+    - Requirements describe in-game behaviour the player can observe, not Lua internals
+  tasks:
+    - Include harness checks for the new behaviour
+    - Include a CHANGELOG.md entry and a TOC version bump for anything user-visible
+    - End with an in-game check list for the user (what to do, what they should see)
