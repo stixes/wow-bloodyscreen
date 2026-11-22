@@ -41,7 +41,10 @@ base=${version%%-*}
 IFS=. read -r ma mi pa <<<"$base"
 newver="$ma.$mi.$((${pa:-0} + 1))"
 sed -i -e "s/^## Interface: .*/## Interface: $newif/" -e "s/^## Version: .*/## Version: $newver/" "$toc"
+# An "## Unreleased" section becomes this version (it ships in the same zip);
+# otherwise a new section goes above the first one.
 awk -v v="$newver" -v g="$newname" '
+    !done && /^## Unreleased$/ { print "## " v "\n\n* Updated for WoW Forever " g "."; done = 1; next }
     !done && /^## / { print "## " v "\n\n* Updated for WoW Forever " g ".\n"; done = 1 }
     { print }' CHANGELOG.md > CHANGELOG.md.new && mv CHANGELOG.md.new CHANGELOG.md
 echo "bumped: Interface $interface -> $newif, Version $version -> $newver"

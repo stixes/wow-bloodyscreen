@@ -1,9 +1,10 @@
 # Changelog
 
 Each release reads its notes from the `## <version>` section matching
-`## Version` in the TOC (tools/release.sh). Markdown.
+`## Version` in the TOC (tools/release.sh). Markdown. Features land under
+`## Unreleased`; at release time that heading becomes the version.
 
-## 0.19.0
+## Unreleased
 
 Your target is taking a beating, and your screen shows it.
 

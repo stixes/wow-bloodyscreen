@@ -198,7 +198,8 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 4. In game, the user runs `/reload` for Lua or TOC changes. **New texture
    files need a full game restart**; files that were only changed are picked
    up by `/reload`.
-5. Commit, bumping `## Version` in the TOC for anything user-visible.
+5. Commit. Add anything user-visible to `CHANGELOG.md` under `## Unreleased`;
+   don't bump `## Version` (the version is picked at release time).
 
 **Claude Code hooks** (`.claude/settings.json`, active when Claude Code is
 started inside this repo):
@@ -231,8 +232,9 @@ Releases go out from GitHub Actions when a tag is pushed:
 1. Bump `## Version` in the TOC (and `## Interface` after a Forever patch).
    `1.2.3` releases as *release*, `1.2.3-beta1` as *beta*, `1.2.3-alpha1` as
    *alpha*.
-2. Add a `## <version>` section to `CHANGELOG.md` (Markdown; it becomes the
-   CurseForge changelog and the GitHub release notes). Commit and push `main`.
+2. Rename `## Unreleased` in `CHANGELOG.md` to `## <version>` (Markdown; it
+   becomes the CurseForge changelog and the GitHub release notes; `release.sh`
+   refuses to release while an `## Unreleased` section is left). Commit and push `main`.
 3. **Review with a clean context.** Run the `release-reviewer` agent
    (`.claude/agents/release-reviewer.md`) and give it only the version and the
    previous tag, not a summary of the work: it reads the whole README,

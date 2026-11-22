@@ -15,7 +15,7 @@
 
 - [x] 3.1 `Options.lua` Trigger tooltip: crits are hits your target takes, from anyone (you, pets, your group); verify by reading the tooltip text in `Options.lua`
 - [x] 3.2 README: pitch, settings table (Trigger notes), "How it behaves" (crit triggers), "What had to change" (crit detection: no source in `UNIT_COMBAT`, so any crit on the target counts; mention the splatter cap in big groups and lowering max splatters), slash command list without `/bs strict`; verify `grep -n -i strict README.md` finds only the OpenSpec `validate --strict` line (done: plus one deliberate history note in "What had to change" saying the filter existed up to 0.18.x)
-- [x] 3.3 TOC notes and a CHANGELOG entry for the next version (crits from anyone on your target, strict removed, settings migrate on their own), and bump `## Version` in the TOC; verify `tools/release.sh --dry-run` shows the new notes
+- [x] 3.3 TOC notes and a CHANGELOG entry under `## Unreleased` (crits from anyone on your target, strict removed, settings migrate on their own); no version bump, that is release work; verify by reading the `## Unreleased` section
 
 ## 4. In-game check (the user, on WoW Forever)
 

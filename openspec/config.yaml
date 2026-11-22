@@ -44,6 +44,6 @@ rules:
     - Requirements describe in-game behaviour the player can observe, not Lua internals
   tasks:
     - Include harness checks for the new behaviour
-    - Include a CHANGELOG.md entry and a TOC version bump for anything user-visible
+    - Add anything user-visible to CHANGELOG.md under "## Unreleased"; never bump the TOC version (that is release work)
     - End with an in-game check list for the user (what to do, what they should see)
     - No release tasks (version type, push, tag, publish); releasing is separate from changes

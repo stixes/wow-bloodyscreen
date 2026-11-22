@@ -65,6 +65,7 @@ notes=$(awk -v v="$version" '
     on && /^## / {exit}
     on {print}' CHANGELOG.md | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
 [[ -n "$notes" ]] || die "CHANGELOG.md has no '## $version' section"
+! grep -q '^## Unreleased' CHANGELOG.md || die "CHANGELOG.md still has an '## Unreleased' section - rename it to '## $version'"
 tools/check-openspec-archived.sh HEAD >/dev/null || exit 1
 
 pkg=$(tools/package.sh)       # no "| head": with pipefail that SIGPIPEs (exit 141)
