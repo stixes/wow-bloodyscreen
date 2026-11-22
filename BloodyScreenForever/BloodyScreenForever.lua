@@ -56,6 +56,7 @@ ns.DEFAULTS = {
     barY        = -140,  -- its offset from screen centre, px
     barAlphaCombat = 0.40, -- energy bar opacity in combat
     barAlphaIdle   = 0.15, -- and out of combat
+    barHideFull    = true, -- hide the bar out of combat when power is full (and no combo points)
     strict      = true,  -- crit attribution heuristic, see header
 }
 

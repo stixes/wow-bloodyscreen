@@ -223,6 +223,25 @@ run(1); n = splat(); check("replay: settles at 1 splatter", n==1)
 fire("PLAYER_TARGET_CHANGED"); onTarget=0; run(0.3); onTarget=1; power=1; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS")
 n, st = splat(); check("replay: hit 0.3 s after a switch pops instantly (steps "..table.concat(st,",").." incl. the old one fading out)", st[1]==1 and st[2] ~= 1)
 GetComboPoints = nil
+-- hide when full out of combat
+secretPower=false; energy=100; power=0; onTarget=0
+inCombatFlag=false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("hideFull: full energy, out of combat, no CPs -> hidden (alpha "..tostring(barState.alpha)..")", barState.alpha==0)
+energy=80; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("hideFull: energy 80 -> visible at idle opacity", barState.alpha==ns.db.barAlphaIdle)
+energy=100; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); power=2; run(0.1)
+check("hideFull: full but holding combo points -> visible", barState.alpha==ns.db.barAlphaIdle)
+power=0; run(0.1); check("hideFull: points gone -> hidden again", barState.alpha==0)
+barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); check("hideFull: entering combat -> combat opacity", barState.alpha==ns.db.barAlphaCombat)
+barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); check("hideFull: leaving combat at full -> hidden", barState.alpha==0)
+ns.db.barHideFull=false; ns.ApplyBar(); check("hideFull off -> visible", barState.alpha==ns.db.barAlphaIdle)
+ns.db.barHideFull=true; secretPower=true; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+check("hideFull: unreadable (secret) power -> stays visible, no error", barState.alpha==ns.db.barAlphaIdle)
+-- combat ends while power is still secret, then becomes readable with no power event
+energy=100; secretPower=true; barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+check("hideFull: still secret right after combat -> visible", barState.alpha==ns.db.barAlphaIdle)
+secretPower=false; run(0.1); check("hideFull: readable a moment later, no event -> hidden by the poll", barState.alpha==0)
 local traceUpd
 for k in pairs(scripts) do end
 SlashCmdList.BLOODYSCREENFOREVER("trace")

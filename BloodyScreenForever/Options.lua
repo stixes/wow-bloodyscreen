@@ -27,6 +27,14 @@ function ns.BuildOptions()
         if onChange then s:SetValueChangedCallback(function() onChange() end) end
     end
 
+    local function Header(title)
+        if layout and CreateSettingsListSectionHeaderInitializer then
+            layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(title))
+        end
+    end
+
+    -- Blood splatters ------------------------------------------------------
+    Header("Blood splatters")
     local mode = Setting("mode", "Trigger")
     Settings.CreateDropdown(category, mode, function()
         local c = Settings.CreateControlTextContainer()
@@ -42,12 +50,18 @@ function ns.BuildOptions()
     Slider("areaH", "Drawing area height", "Splatters are placed inside a centred area this share of the screen height.", 10, 100, 5, "%d%%", ns.ApplyLayout)
     Settings.CreateCheckbox(category, Setting("avoidCentre", "Avoid the centre"),
         "Keep splatters off the centre of the screen (about 20% around your character).")
+    if layout and CreateSettingsButtonInitializer then
+        layout:AddInitializer(CreateSettingsButtonInitializer("Preview", "Test",
+            function() ns.Test() end, "Show all splatters for a few seconds (same as /bs test).", true))
+    end
 
-    local barSetting = Setting("bar", "Energy bar")
-    Settings.CreateCheckbox(category, barSetting,
-        "A small translucent bar for your energy (or rage, mana...) under your character, with combo points below it.")
-    barSetting:SetValueChangedCallback(function() ns.ApplyBar() end)
-    Slider("barY", "Energy bar position", "Distance below the screen centre.", -500, 0, 5, "%d px", ns.ApplyBar)
+    -- Energy bar -----------------------------------------------------------
+    Header("Energy bar")
+    local function Check(key, name, tooltip)
+        local s = Setting(key, name)
+        Settings.CreateCheckbox(category, s, tooltip)
+        s:SetValueChangedCallback(function() ns.ApplyBar() end)
+    end
     local function Pct(key, name, tooltip)
         local s = Setting(key, name)
         local opts = Settings.CreateSliderOptions(0, 1, 0.05)
@@ -55,13 +69,13 @@ function ns.BuildOptions()
         Settings.CreateSlider(category, s, opts, tooltip)
         s:SetValueChangedCallback(function() ns.ApplyBar() end)
     end
-    Pct("barAlphaCombat", "Energy bar opacity in combat", "How visible the energy bar and combo points are in combat.")
-    Pct("barAlphaIdle", "Energy bar opacity out of combat", "How visible the energy bar and combo points are out of combat.")
-
-    if layout and CreateSettingsButtonInitializer then
-        layout:AddInitializer(CreateSettingsButtonInitializer("Preview", "Test",
-            function() ns.Test() end, "Show all splatters for a few seconds (same as /bs test).", true))
-    end
+    Check("bar", "Show energy bar",
+        "A small translucent bar for your energy (or rage, mana...) under your character, with combo points below it.")
+    Check("barHideFull", "Hide when full out of combat",
+        "Hide the bar out of combat while your energy (or mana...) is full and you have no combo points.")
+    Slider("barY", "Position", "Distance below the screen centre.", -500, 0, 5, "%d px", ns.ApplyBar)
+    Pct("barAlphaCombat", "Opacity in combat", "How visible the energy bar and combo points are in combat.")
+    Pct("barAlphaIdle", "Opacity out of combat", "How visible the energy bar and combo points are out of combat.")
 
     Settings.RegisterAddOnCategory(category)
 end

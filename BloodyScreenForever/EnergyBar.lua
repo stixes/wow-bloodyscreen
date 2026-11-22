@@ -43,9 +43,24 @@ local function Color(token)
     return c or FALLBACK_COLOR
 end
 
+-- Full power? Only answerable when the values are readable (out of combat
+-- they are; in combat the primary power is secret, so "not full" is assumed).
+local function IsFull()
+    local ok1, cur = pcall(UnitPower, "player", powerType)
+    local ok2, max = pcall(UnitPowerMax, "player", powerType)
+    if not (ok1 and ok2 and Readable(cur) and Readable(max)) then return false end
+    return type(cur) == "number" and type(max) == "number" and max > 0 and cur >= max
+end
+
 local function UpdateAlpha()
     if not bar or not ns.db then return end
-    bar:SetAlpha(inCombat and ns.db.barAlphaCombat or ns.db.barAlphaIdle)
+    if inCombat then
+        bar:SetAlpha(ns.db.barAlphaCombat)
+    elseif ns.db.barHideFull and (lastCur or 0) == 0 and IsFull() then
+        bar:SetAlpha(0) -- hidden, but keeps running (so it reappears on any change)
+    else
+        bar:SetAlpha(ns.db.barAlphaIdle)
+    end
 end
 
 local function UpdateValue()
@@ -58,6 +73,7 @@ local function UpdateValue()
         textOK = pcall(function() text:SetText(string.format("%d", UnitPower("player", powerType))) end)
         if not textOK then text:SetText("") end
     end
+    if not inCombat then UpdateAlpha() end
 end
 
 ---------------------------------------------------------------------------
@@ -94,6 +110,7 @@ local function UpdateCombo()
     if cur == lastCur and max == lastMax and baubleRow:IsShown() then return end
     lastCur, lastMax = cur, max
     ns.baubleCount = cur -- for /bs trace
+    if not inCombat then UpdateAlpha() end
     local rowWidth = max * BAUBLE + (max - 1) * BAUBLE_GAP
     baubleRow:SetSize(rowWidth, BAUBLE)
     for i = 1, MAX_BAUBLES do
@@ -185,6 +202,9 @@ function ns.SetupBar()
         if pollElapsed >= POLL then
             pollElapsed = 0
             UpdateCombo()
+            -- at full power no power events arrive, and right after combat the
+            -- value may still be secret for a moment: re-check "full" here
+            if not inCombat then UpdateAlpha() end
         end
     end)
     bar:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
