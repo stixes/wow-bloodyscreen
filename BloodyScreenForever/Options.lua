@@ -40,7 +40,7 @@ function ns.BuildOptions()
         local c = Settings.CreateControlTextContainer()
         for _, m in ipairs(ns.MODES) do c:Add(m[1], m[2]) end
         return c:GetData()
-    end, "Automatic: combo points for rogues (and druids in cat form), crits that fade after the timer for everyone else. Settings are shared across your characters, so this suits alts.\nCombo points: one splatter per combo point.\nCrits: your target is taking a beating. Every critical hit it takes splatters, whoever landed it (you, your pet, your group), hidden when combat ends or after the timer.")
+    end, "Automatic: combo points for rogues (and druids in cat form), crits that fade after the timer for everyone else. Settings are shared across your characters, so this suits alts.\nCombo points: one splatter per combo point.\nCrits: your target is taking a beating. While you're in combat, every critical hit it takes splatters, whoever landed it (you, your pet, your group), hidden when combat ends or after the timer.")
     mode:SetValueChangedCallback(function() ns.ClearNow() end)
 
     Slider("timer", "Hide the splatters after", "For the crit timer triggers (the original: 10 s).", 1, 60, 1, "%d s")

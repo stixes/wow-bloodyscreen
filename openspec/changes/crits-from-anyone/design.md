@@ -34,6 +34,9 @@ Remove its branch and help line. Whatever the slash handler does for an unknown 
 ### "Crits - hide when combat ends" out of combat
 Unchanged behaviour, worth noting because crits from anyone now arrive while the player is out of combat (watching someone else fight their target). That trigger already fades everything each frame while `UnitAffectingCombat("player")` is false, so such crits flash and fade at once. The timed triggers show them for the normal timer. No new code.
 
+### Crits count only while the player is in combat
+Added after the in-game check showed that targeting someone else's mob splatters while you stand idle. A crit counts when the player is in combat by either signal: `UnitAffectingCombat("player")` (readable-guarded) or a flag tracked from `PLAYER_REGEN_DISABLED` / `PLAYER_REGEN_ENABLED`, like the energy bar's (`InCombatLockdown()` lags behind those events). Either-signal acceptance is there for the opening crit: whether `UNIT_COMBAT` for the hit that starts combat arrives before the game reports combat hasn't been measured, and an opener that arrives first would be dropped. The check sits in the crit handler, so it covers every crit trigger and Automatic; `/bs test` and combo points don't go through it. Already-shown splatters keep their timers (spec: they fade in or out of combat). This makes the "hide when combat ends" note about out-of-combat crits flashing moot. Alternative: only `UnitAffectingCombat`. Rejected: one signal, and the ordering risk above has no fallback.
+
 ### Narrative and wording
 Tooltip, help and docs describe crits as hits *your target* takes ("your target is taking a beating"). The dropdown labels stay short ("Crits - hide when combat ends", …) because they must fit the Settings dropdown; the tooltip carries the narrative. The Automatic label ("…crits for others") stays accurate.
 
@@ -42,6 +45,7 @@ Tooltip, help and docs describe crits as hits *your target* takes ("your target 
 - [Big groups keep the crit triggers at the splatter cap] → Accepted (proposal). Players can lower the max splatters or switch trigger; the README says so.
 - [`UNIT_COMBAT` might not fire for others' crits on the target, contrary to the assumption] → Measure first: in a group, `/bs debug` before and after a fight; `seen` rising while the player isn't attacking confirms it. If it doesn't fire, the change still holds for the player's own crits, and the docs must not promise others' crits.
 - [DoT crits may not arrive as `WOUND` + `CRITICAL`] → Same measurement (watch `seen` while only a DoT ticks). Docs say "critical hits your target takes" without promising DoTs.
+- [The opening crit may arrive before either combat signal and be dropped] → In-game check on a fresh pull (manual test). If it is dropped, a short grace window after the player's own `UNIT_SPELLCAST_SUCCEEDED` or auto-attack start could cover it; not built unless needed.
 - [Players who relied on strict lose it] → It was hidden (slash command only) and on by default, so few chose it. CHANGELOG says what changed.
 
 ## Migration Plan

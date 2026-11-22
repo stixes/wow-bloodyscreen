@@ -61,7 +61,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 
 | setting | default | notes |
 |---|---|---|
-| Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits - hide when combat ends / Crits - hide after the timer (each splatter) / Crits - hide after the timer (shared). Crits are every critical hit your target takes, from anyone. The original defaulted to crits. |
+| Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits - hide when combat ends / Crits - hide after the timer (each splatter) / Crits - hide after the timer (shared). Crits are every critical hit your target takes while you're in combat, from anyone. The original defaulted to crits. |
 | Hide the splatters after | 5 s | crit timer triggers. The original: 10 s. |
 | Maximal number of splatters | 10 | |
 | Splatter size | 266 px | the original's 266 px × scale 1 |
@@ -103,14 +103,14 @@ Commands: `/bs test` (preview all splatters), `/bs reset` or `/bs default`,
   a druid in cat form, otherwise *Crits - hide after the timer (each splatter)*.
   It is worked out again on login, on entering the world and when a druid
   changes form; when the result changes, the splatters on screen are cleared.
-- **Crits (new: from anyone).** A crit is any critical hit your target takes,
-  whoever landed it: you, your pet or another player. The original counted only
-  your own; see "What had to change". In a big group the crit triggers often sit
+- **Crits (new: from anyone).** A crit is any critical hit your target takes
+  while you're in combat, whoever landed it: you, your pet or another player.
+  Targeting someone else's fight while you stand by adds nothing. The original
+  counted only your own crits; see "What had to change". In a big group the crit triggers often sit
   at `max` splatters. Lower *Maximal number of splatters* or pick another
   trigger if that's too much.
 - **Crits – hide when combat ends.** Each crit adds a slot up to `max`. Extra
-  crits are ignored. Everything fades when you leave combat, so crits on your
-  target while you're out of combat flash and fade at once.
+  crits are ignored. Everything fades when you leave combat.
 - **Crits – timer.** Each crit re-places the next slot in rotation. With *each
   splatter*, every slot fades `timer` s after it appeared. With *shared*, all
   slots fade `timer` s after the last crit.
@@ -145,7 +145,7 @@ working.
   `destGUID == target`). Addons can't use the combat log on Midnight/Forever.
   This version reads `UNIT_COMBAT` for `target` (`WOUND` + `CRITICAL`). That
   event says nothing about who hit, so instead of guessing, every crit your
-  target takes counts: your target is taking a beating. (Up to 0.18.x a timing
+  target takes while you're in combat counts: your target is taking a beating. (Up to 0.18.x a timing
   filter, "strict", tried to keep only your own crits; it was removed in
   settings version 10.) Whether DoT crits arrive this way hasn't been measured.
   If the game hides the crit flag (a secret value), the crit is skipped and

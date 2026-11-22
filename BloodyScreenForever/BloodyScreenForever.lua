@@ -104,7 +104,8 @@ local lastShown = -1    -- BS_LastTextureShown
 local globalTimer = 0   -- BS_GlobalTimer
 local previewUntil = 0
 local warnedSecret = false
-local stats = { crits = 0, counted = 0, secretFlag = 0 }
+local stats = { crits = 0, counted = 0, secretFlag = 0, outOfCombat = 0 }
+local inCombat = false  -- from the REGEN events: InCombatLockdown() lags behind them
 
 -- BS_TextureFrame: the drawing area.
 local area = CreateFrame("Frame", "BloodyScreenForeverFrame", UIParent)
@@ -420,6 +421,13 @@ local function OnUnitCombat(unit, action, flagText)
     if flagText ~= "CRITICAL" then return end
     if Readable(action) and action ~= "WOUND" then return end -- heals, misses, etc.
     stats.crits = stats.crits + 1
+    -- Only while you're in combat (not when watching someone else's fight). Either
+    -- signal will do, so the crit that starts combat isn't lost to event order.
+    local uac = UnitAffectingCombat("player")
+    if not (inCombat or (Readable(uac) and uac)) then
+        stats.outOfCombat = stats.outOfCombat + 1
+        return
+    end
     stats.counted = stats.counted + 1
     OnCrit()
 end
@@ -477,6 +485,8 @@ function handlers.UNIT_POWER_UPDATE(_unit, token)
 end
 
 function handlers.UNIT_COMBAT(...) OnUnitCombat(...) end
+function handlers.PLAYER_REGEN_DISABLED() inCombat = true end
+function handlers.PLAYER_REGEN_ENABLED() inCombat = false end
 function handlers.PLAYER_TARGET_CHANGED() OnTargetChanged() end
 
 area:SetScript("OnEvent", function(_, event, ...)
@@ -491,7 +501,7 @@ end
 handlers.UI_SCALE_CHANGED = handlers.DISPLAY_SIZE_CHANGED
 
 for _, e in ipairs({ "ADDON_LOADED", "PLAYER_ENTERING_WORLD", "PLAYER_TARGET_CHANGED", "DISPLAY_SIZE_CHANGED",
-    "UI_SCALE_CHANGED", "UNIT_COMBAT" }) do
+    "UI_SCALE_CHANGED", "UNIT_COMBAT", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED" }) do
     area:RegisterEvent(e)
 end
 area:RegisterUnitEvent("UNIT_POWER_UPDATE", "player")
@@ -606,8 +616,8 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         Log(("combo: ok=%s secret=%s value=%s GetComboPoints(target)=%s | mode=%s (in effect: %s)"):format(
             tostring(ok), tostring(IsSecret(cur)), IsSecret(cur) and "?" or tostring(cur),
             IsSecret(gcp) and "?" or tostring(gcp), db.mode, tostring(mode)))
-        Log(("crits on target: seen=%d shown=%d secret-flag=%d"):format(
-            stats.crits, stats.counted, stats.secretFlag))
+        Log(("crits on target: seen=%d shown=%d out-of-combat=%d secret-flag=%d"):format(
+            stats.crits, stats.counted, stats.outOfCombat, stats.secretFlag))
         local vis = 0
         for i = 0, db.max - 1 do if Visible(i) then vis = vis + 1 end end
         Log(("project=%s build=%s visible=%d critCount=%d area=%d%%x%d%% (%dx%d px) avoidCentre=%s"):format(

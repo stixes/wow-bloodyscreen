@@ -319,7 +319,7 @@ check("/bs help: no strict command listed", #printed > 0 and not helpText:lower(
 playerClass, ptype, ptoken = "WARRIOR", 1, "RAGE"; secret = false
 fire("UNIT_DISPLAYPOWER", "player"); run(0.1); ns.ClearNow()
 print = function() end; SlashCmdList.BLOODYSCREENFOREVER("strict on"); print = realPrint
-crit(); run(0.02)
+inCombatFlag = true; crit(); run(0.02)
 check("/bs strict on: crits still splatter, no strict key saved", vis() == 1 and ns.db.strict == nil)
 
 -- /bs debug crit line: seen equals shown (nothing is filtered), no strict fields
@@ -329,9 +329,22 @@ SlashCmdList.BLOODYSCREENFOREVER("debug")
 print = realPrint
 local critLine
 for _, l in ipairs(printed) do if l:find("crits on target:") then critLine = l end end
-local seen, shown = (critLine or ""):match("seen=(%d+) shown=(%d+) secret%-flag=%d+$")
-check("/bs debug: crits on target seen=shown, no strict fields: "..tostring(critLine and critLine:match("crits on target:.*")),
-    seen ~= nil and seen == shown and not critLine:lower():find("strict") and not critLine:find("autoattack"))
+local seen, shown, ooc = (critLine or ""):match("seen=(%d+) shown=(%d+) out%-of%-combat=(%d+) secret%-flag=%d+$")
+check("/bs debug: crits on target seen = shown + out-of-combat, no strict fields: "..tostring(critLine and critLine:match("crits on target:.*")),
+    seen ~= nil and tonumber(seen) == tonumber(shown) + tonumber(ooc) and not critLine:lower():find("strict") and not critLine:find("autoattack"))
+
+-- crits count only while you're in combat (either signal), timers keep running
+mode("crittimed"); inCombatFlag = false; fire("PLAYER_REGEN_ENABLED")
+crit(); run(0.02); check("out of combat: crit on target adds nothing (watching someone else's fight)", vis() == 0)
+fire("PLAYER_REGEN_DISABLED"); crit(); run(0.02)
+check("in combat by the REGEN event only (opening crit before UnitAffectingCombat): crit counts", vis() == 1)
+fire("PLAYER_REGEN_ENABLED"); inCombatFlag = true; crit(); run(0.02)
+check("in combat by UnitAffectingCombat only (crit before PLAYER_REGEN_DISABLED): crit counts", vis() == 2)
+inCombatFlag = false; crit(); run(0.02); check("left combat: later crits add nothing", vis() == 2)
+run(ns.db.timer + 1); check("left combat: timed splatters still fade on their timer", vis() == 0)
+print = function() end; SlashCmdList.BLOODYSCREENFOREVER("test"); print = realPrint; run(0.1)
+check("/bs test previews out of combat", vis() == ns.db.max)
+run(5); ns.ClearNow()
 
 -- Trigger tooltip tells the new story: crits are hits the target takes, from anyone
 local trig = dropdownTooltips[1] or ""
