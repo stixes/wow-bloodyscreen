@@ -47,7 +47,7 @@ Append them at the end of the harness, before the failures summary. The end stat
 
 Everything else (idle detection, every wake, fades, timers, crossfade, bar opacity and hide rules, `/bs test`, the debug line) is covered by the harness in groups 1 and 5. This check measures the one unmeasured API behaviour and confirms the idle state on the real client. It runs alongside implementation; it does not block it.
 
-- [ ] 6.1 Clear your target, stand still at full energy for 5 s, then `/bs debug`: the chat shows `idle: splatters=idle bar=idle`. (Owner decision 2026-11-22: the out-of-combat late-combo-count measurement is dropped. Switching targets with combo points out of combat practically only happens in PvP, and the worst case is beads updating a moment late; `ns.COMBO_SETTLE` stays 3 s, about 3x the ~1 s measured in combat. Left to a bug report.)
+- [x] 6.1 Clear your target, stand still at full energy for 5 s, then `/bs debug`: the chat shows `idle: splatters=idle bar=idle`. (Owner decision 2026-11-22: the out-of-combat late-combo-count measurement is dropped. Switching targets with combo points out of combat practically only happens in PvP, and the worst case is beads updating a moment late; `ns.COMBO_SETTLE` stays 3 s, about 3x the ~1 s measured in combat. Left to a bug report.) (Passed 2026-11-22.)
 
 ## Workflow follow-up
 
