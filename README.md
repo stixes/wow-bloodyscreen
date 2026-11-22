@@ -220,6 +220,13 @@ Releases go out from GitHub Actions when a tag is pushed:
 3. Tag and push: `git tag -a v<version> -m "Release <version>" && git push origin v<version>`.
    Remote git operations need the user's go-ahead.
 
+A release requires every OpenSpec change to be archived:
+`tools/check-openspec-archived.sh` fails while `openspec/changes/` holds
+anything but `archive/`. `tools/release.sh` runs it before packaging (so the
+workflow stops before uploading), and a Claude Code hook
+(`tools/hooks/pre-release-tag.sh`) blocks creating or pushing a `v*` tag until
+it passes.
+
 `.github/workflows/release.yml` then runs the tests, `tools/release.sh --ci`
 (checks that the tag matches the TOC version and that the changelog section
 exists, builds the zip from committed files with `git archive`, finds the

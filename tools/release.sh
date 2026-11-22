@@ -14,6 +14,7 @@
 # "## <version>" section. Needs the CurseForge API token (author portal ->
 # API tokens) as CF_API_TOKEN or API_TOKEN, injected by envchain (namespace
 # curseforge holds API_TOKEN); the token is never printed.
+# Every OpenSpec change must be archived (tools/check-openspec-archived.sh).
 # Steps: checks -> zip (tools/package.sh) -> game version id -> upload -> git tag v<version>.
 # --dry-run does everything except the upload and the tag.
 # --ci: HEAD must already be tagged v<version>; no tag is created. Writes
@@ -64,6 +65,7 @@ notes=$(awk -v v="$version" '
     on && /^## / {exit}
     on {print}' CHANGELOG.md | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')
 [[ -n "$notes" ]] || die "CHANGELOG.md has no '## $version' section"
+tools/check-openspec-archived.sh HEAD >/dev/null || exit 1
 
 pkg=$(tools/package.sh)       # no "| head": with pipefail that SIGPIPEs (exit 141)
 zip=${pkg%%$'\n'*}
