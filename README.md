@@ -197,7 +197,7 @@ envchain namespace. Never print it. New files then wait for CurseForge
 moderation (minutes to about three workdays).
 
 A tag whose message contains `[no-curseforge]` gets a GitHub release only (used
-for v0.17.0, which was uploaded by hand).
+e.g. to re-run a release without uploading twice).
 
 **Manual fallback** (GitHub down): `envchain curseforge tools/release.sh --dry-run`,
 then without `--dry-run`. It tags locally; pushing that tag later would make
