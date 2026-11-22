@@ -2,7 +2,7 @@
 ## Title: Bloody Screen |cffb01010Forever|r
 ## Notes: Splatters blood on your screen on combo points or crits. A faithful port of Feador's Bloody Screen for WoW Forever.
 ## Author: stixes
-## Version: 0.16.0
+## Version: 0.16.1
 ## SavedVariables: BloodyScreenForeverDB
 ## IconTexture: Interface\AddOns\BloodyScreenForever\Textures\Splatter1_1
 

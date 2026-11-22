@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Generate the combo point bauble textures: a full and an empty blood drop.
+"""Generate the combo point bauble textures: round beads of blood.
 
-Own art (safe to commit). 64x64 32-bit uncompressed TGA, drop pointing up.
+Full: a bead of blood (deep red, darker rim, specular highlight).
+Empty: a dark bead, so the row shows how many points are possible.
+Own art (safe to commit). 64x64 32-bit uncompressed TGA.
 Usage: python3 tools/gen_drops.py [outdir]
 """
-import math, sys
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageChops
 
@@ -12,62 +14,34 @@ S = 64          # output size
 SS = 8          # supersampling
 N = S * SS
 
-def drop_polygon(scale=1.0):
-    # teardrop: x = sin(t) * sin(t/2)^m, y = cos(t); tip at t=0 (top)
-    pts, m = [], 1.6
-    w, h = N * 0.40 * scale, N * 0.46 * scale
-    cx, cy = N / 2, N * 0.52
-    for i in range(400):
-        t = i / 400 * 2 * math.pi
-        x = math.sin(t) * math.sin(t / 2) ** m
-        y = -math.cos(t)
-        pts.append((cx + x * w, cy + y * h))
-    return pts
-
-def mask(scale=1.0, blur=1.0):
-    m = Image.new("L", (N, N), 0)
-    ImageDraw.Draw(m).polygon(drop_polygon(scale), fill=255)
-    return m.filter(ImageFilter.GaussianBlur(SS * blur))
-
-def ellipse_mask(box, blur):
+def disc(box, blur):
     m = Image.new("L", (N, N), 0)
     ImageDraw.Draw(m).ellipse([v * N for v in box], fill=255)
-    return m.filter(ImageFilter.GaussianBlur(SS * blur))
+    return m.filter(ImageFilter.GaussianBlur(SS * blur)) if blur else m
 
-def full_drop():
-    shape = mask(1.0, 0.6)
-    inner = mask(0.80, 6.0)                       # depth: brighter core, dark rim
-    r = inner.point(lambda v: int(95 + v * 0.55))
-    g = inner.point(lambda v: int(4 + v * 0.03))
-    b = inner.point(lambda v: int(6 + v * 0.03))
-    img = Image.merge("RGBA", (r, g, b, shape))
-    # glossy highlight, upper left, and a faint reflected light lower right
-    hi = ellipse_mask((0.33, 0.42, 0.45, 0.62), 2.5)
-    lo = ellipse_mask((0.55, 0.70, 0.66, 0.80), 3.0)
-    white = Image.new("RGBA", (N, N), (255, 235, 235, 255))
-    img = Image.composite(white, img, ImageChops.multiply(hi.point(lambda v: int(v * 0.85)), shape))
-    pink = Image.new("RGBA", (N, N), (230, 90, 90, 255))
-    img = Image.composite(pink, img, ImageChops.multiply(lo.point(lambda v: int(v * 0.35)), shape))
+def bead(core, rim, spec_strength, soft_strength):
+    shape = disc((0.03, 0.03, 0.97, 0.97), 0.5)
+    # depth: lit core offset towards the light (upper left), dark rim
+    depth = disc((0.12, 0.10, 0.80, 0.78), 7.0)
+    def mix(i):
+        return depth.point(lambda v: int(rim[i] + (core[i] - rim[i]) * v / 255))
+    img = Image.merge("RGBA", (mix(0), mix(1), mix(2), shape))
+    # soft broad sheen, then a small sharp specular, upper left
+    for box, blur, strength, colour in (
+        ((0.18, 0.14, 0.62, 0.50), 4.0, soft_strength, (255, 170, 170, 255)),
+        ((0.26, 0.20, 0.44, 0.36), 1.2, spec_strength, (255, 250, 250, 255)),
+    ):
+        m = ImageChops.multiply(disc(box, blur).point(lambda v: int(v * strength)), shape)
+        img = Image.composite(Image.new("RGBA", (N, N), colour), img, m)
     img.putalpha(shape)
-    return img.resize((S, S), Image.LANCZOS)
-
-def empty_drop():
-    shape = mask(1.0, 0.6)
-    hole = mask(0.78, 0.6)
-    rim = ImageChops.subtract(shape, hole)        # dark outline
-    fill = hole.point(lambda v: int(v * 0.45))    # see-through dark inside
-    a = ImageChops.lighter(rim, fill)
-    shade = rim.point(lambda v: 110 if v > 0 else 0)
-    base = Image.new("L", (N, N), 30)
-    lum = ImageChops.lighter(base, shade)
-    img = Image.merge("RGBA", (lum, lum.point(lambda v: int(v * 0.8)), lum.point(lambda v: int(v * 0.8)), a))
     return img.resize((S, S), Image.LANCZOS)
 
 def main():
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "BloodyScreenForever" / "Textures" / "Drops"
     out.mkdir(parents=True, exist_ok=True)
-    full_drop().save(out / "drop_full.tga", compression=None)
-    empty_drop().save(out / "drop_empty.tga", compression=None)
+    # blood: deep crimson core, near-black maroon rim
+    bead(core=(150, 8, 10), rim=(45, 0, 2), spec_strength=0.95, soft_strength=0.22).save(out / "drop_full.tga", compression=None)
+    bead(core=(48, 44, 44), rim=(16, 14, 14), spec_strength=0.25, soft_strength=0.08).save(out / "drop_empty.tga", compression=None)
     print(out / "drop_full.tga"); print(out / "drop_empty.tga")
 
 if __name__ == "__main__":

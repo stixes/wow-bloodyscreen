@@ -15,7 +15,7 @@ BloodyScreenForever/          <- symlinked into _forever_/Interface/AddOns/
   EnergyBar.lua                energy bar under your character
   Options.lua                  Blizzard Settings panel
   Textures/Splatter{1-5}_{1-10}.tga   fetched, not bundled
-  Textures/Drops/drop_{full,empty}.tga combo point drops (own art, committed)
+  Textures/Drops/drop_{full,empty}.tga combo point beads (own art, committed)
 tools/fetch_original_textures.sh      fetch Feador's original art
 tools/gen_drops.py                    regenerate the drop textures
 ```
@@ -84,9 +84,10 @@ screen centre so it sits under your character. It shows energy, or rage, mana
 and so on depending on class or form, in that resource's colour, with the
 number on it. Opacity is 40% in combat and 15% out of combat (two sliders).
 
-Under it is a row of combo point baubles, styled as little drops of blood: one
-per possible combo point (5, or more with talents), filled red as you gain them
-and an empty outline otherwise (own art, `tools/gen_drops.py`). Combo points belong to the player
+Under it is a row of round combo point baubles shaded like beads of blood
+(deep red, dark rim, specular highlight): one per possible combo point (5, or
+more with talents), red as you gain them and dark otherwise (own art,
+`tools/gen_drops.py`). Combo points belong to the player
 on modern clients, so this is your current count, effectively the count on the
 mob you're hitting. The row is hidden for classes without combo points.
 
@@ -125,6 +126,6 @@ with the textures included.
 
 ## Status
 
-v0.16.0. The Lua passes a syntax check and a stubbed-API harness that checks
+v0.16.1. The Lua passes a syntax check and a stubbed-API harness that checks
 every trigger, the slot rules, fades, the drawing area and the size clamp. It
 has **not been tested in the live client yet.**

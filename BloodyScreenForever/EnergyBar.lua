@@ -16,8 +16,8 @@ local WIDTH, HEIGHT = 160, 10
 local TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"
 local FALLBACK_COLOR = { r = 1, g = 0.96, b = 0.41 } -- energy yellow
 local COMBO = (Enum and Enum.PowerType and Enum.PowerType.ComboPoints) or 4
--- combo point baubles: little drops of blood (tools/gen_drops.py)
-local BAUBLE_W, BAUBLE_H, BAUBLE_GAP = 12, 16, 5
+-- combo point baubles: round beads of blood (tools/gen_drops.py)
+local BAUBLE_W, BAUBLE_H, BAUBLE_GAP = 12, 12, 5
 local DROP_FULL = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_full"
 local DROP_EMPTY = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_empty"
 local MAX_BAUBLES = 10
