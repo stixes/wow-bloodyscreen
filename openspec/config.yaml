@@ -1,7 +1,7 @@
 schema: spec-driven
 
-# Constraints an agent can't read from the code. The README's "Working on this
-# project" section has the full workflow; keep this short, it lands in every prompt.
+# Constraints an agent can't read from the code. CONTRIBUTING.md's "Working on
+# this project" section has the full workflow; keep this short, it lands in every prompt.
 context: |
   WoW addon for WoW Forever (Blizzard's vanilla-style game on the modern
   Mainline/Midnight client, Interface 16001, game version 1.60.1). Plain Lua 5.1

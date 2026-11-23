@@ -21,7 +21,8 @@ BloodyScreenForever`, `luacheck BloodyScreenForever/`, `tools/release.sh --dry-r
 
 1. `git log --oneline <prev>..HEAD` and `git diff <prev>..HEAD --stat`, then the
    full diff of everything under `BloodyScreenForever/`.
-2. **The whole of** `README.md`, `CHANGELOG.md`'s `## <version>` section, and the
+2. **The whole of** `README.md` (for players), `CONTRIBUTING.md` (how it works,
+   dev and release docs), `CHANGELOG.md`'s `## <version>` section, and the
    TOC. Read every section, not just the ones the diff touched: stale text lives
    in the parts nobody edited.
 3. `openspec/specs/` and any change archived since `<prev>` under
@@ -36,7 +37,7 @@ BloodyScreenForever`, `luacheck BloodyScreenForever/`, `tools/release.sh --dry-r
   changelog section, and nothing in it is untrue or overstated (for example,
   claiming something is tested when it isn't).
 - **Code against docs and specs:** setting names, defaults, slash commands and
-  behaviour described in the README and `openspec/specs/` match the Lua.
+  behaviour described in the README, CONTRIBUTING.md and `openspec/specs/` match the Lua.
 - **Release mechanics:** TOC `## Version` matches the version; the CHANGELOG
   section exists; `tools/release.sh --dry-run` passes; the harness is all PASS
   and luacheck is clean; no open change under `openspec/changes/` except `archive/`.
