@@ -150,7 +150,7 @@ date = date or os.date
 SlashCmdList.BLOODYSCREENFOREVER("debug"); SlashCmdList.BLOODYSCREENFOREVER("default"); SlashCmdList.BLOODYSCREENFOREVER("help")
 secret=true; mode("crit"); crit(); SlashCmdList.BLOODYSCREENFOREVER("debug")
 -- area % and avoid centre
-SlashCmdList.BLOODYSCREENFOREVER("default"); ns.db.max=20; ns.ApplyLayout()
+SlashCmdList.BLOODYSCREENFOREVER("default"); check("default: avoid the centre on", ns.db.avoidCentre==true); ns.db.avoidCentre=false; ns.db.max=20; ns.ApplyLayout()
 local function sample(n) local inZone, outArea = 0, 0
   for k=1,n do SlashCmdList.BLOODYSCREENFOREVER("test")
     for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then
@@ -206,8 +206,8 @@ ns.db.barY = -200; ns.ApplyBar(); check("bar: position setting applied", barStat
 -- opacity + baubles
 local function baub() local on, total = 0, 0 for _,x in ipairs(texs) do local pth = rawget(x,"path")
   if x.shown and type(pth)=="string" and pth:find("Drops") then total=total+1; if pth:find("drop_full") then on=on+1 end end end return on, total end
-inCombatFlag=false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); check("bar: idle opacity 0.15", barState.alpha==0.15)
-inCombatFlag=true; barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); check("bar: combat opacity 0.40", barState.alpha==0.40)
+inCombatFlag=false; barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); check("bar: idle opacity 0.25", barState.alpha==0.25)
+inCombatFlag=true; barState.onEvent(nil, "PLAYER_REGEN_DISABLED"); check("bar: combat opacity 0.80", barState.alpha==0.80)
 ns.db.barAlphaCombat=0.7; ns.ApplyBar(); check("bar: opacity setting applied", barState.alpha==0.7)
 power=3; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS")
 local on, total = baub(); check("baubles: 3 of 5 lit ("..on.."/"..total..")", on==3 and total==5)

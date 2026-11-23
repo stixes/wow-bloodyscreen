@@ -41,12 +41,12 @@ Type `/bs`, or open Esc > Options > AddOns > Bloody Screen.
 | Maximal number of splatters | 10 | lower it if big groups are too much |
 | Splatter size | 266 px | |
 | Drawing area | 80% × 80% | centred on the screen |
-| Avoid the centre | off | keeps splatters away from your character |
+| Avoid the centre | on | keeps splatters away from your character |
 | Disable in raids | off | splatters only; the energy bar stays |
 | Disable in battlegrounds | on | battlegrounds and arenas; the energy bar stays |
 | Show energy bar | on | |
 | Position (energy bar) | 140 px below centre | |
-| Opacity in / out of combat | 40% / 15% | energy bar and combo beads |
+| Opacity in / out of combat | 80% / 25% | energy bar and combo beads |
 | Hide when idle out of combat | on | |
 
 Commands: `/bs test` previews the splatters, `/bs reset` restores the

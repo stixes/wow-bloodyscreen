@@ -4,6 +4,10 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
+## Unreleased
+
+* New defaults: the energy bar is easier to see (80% opacity in combat, 25% out of combat, was 40% / 15%), and *Avoid the centre* is on, so splatters stay off your character. Your saved settings are kept; `/bs reset` picks up the new defaults.
+
 ## 0.19.1
 
 Your target is taking a beating, and your screen shows it. (0.19.0 was never published, so everything in this release is new since 0.18.1.)

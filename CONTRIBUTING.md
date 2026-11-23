@@ -63,9 +63,9 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Drawing area width / height | 80% × 80% | centred, in % of the screen. The original: two draggable corners, 500 × 500 px. |
 | Show energy bar | on | new, see below |
 | Position (energy bar) | −140 px | below screen centre |
-| Energy bar opacity in / out of combat | 40% / 15% | also applies to the combo points |
+| Energy bar opacity in / out of combat | 80% / 25% | also applies to the combo points |
 | Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. |
-| Avoid the centre | off | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
+| Avoid the centre | on | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
 | Disable in raids | off | new: no splatters inside raid instances (any trigger, combo points too). A raid group out in the world doesn't count. The energy bar and combo beads stay. Not tried inside a raid yet. |
 | Disable in battlegrounds | on | new: no splatters inside battlegrounds and arenas. The energy bar and combo beads stay. |
 
@@ -128,7 +128,7 @@ a part back on (the settings panel needs a `/reload`).
 A small (160×10), translucent bar for your main resource, just below the
 screen centre so it sits under your character. It shows energy, or rage, mana
 and so on depending on class or form, in that resource's colour, with the
-number on it. Opacity is 40% in combat and 15% out of combat (two sliders).
+number on it. Opacity is 80% in combat and 25% out of combat (two sliders).
 
 Under it is a row of round combo point baubles shaded like beads of blood
 (deep red, dark rim, specular highlight): one per possible combo point (5, or
