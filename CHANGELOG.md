@@ -6,7 +6,7 @@ Each release reads its notes from the `## <version>` section matching
 
 ## 0.19.2
 
-* New defaults: the energy bar is easier to see (80% opacity in combat, 25% out of combat, was 40% / 15%), and *Avoid the centre* is on, so splatters stay off your character. Your saved settings are kept; `/bs reset` picks up the new defaults.
+* New defaults: the energy bar is easier to see (80% opacity in combat, 25% out of combat, was 40% / 15%), and *Avoid the centre* is on, so splatters stay off your character. Your saved settings are kept; `/bs reset` or the Defaults button in the settings panel picks up the new defaults.
 
 ## 0.19.1
 

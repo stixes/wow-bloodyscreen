@@ -34,6 +34,8 @@ tools/check-api-typos.sh              CI: check that luacheck catches API typos
 tools/hooks/                          Claude Code hooks: lint on edit, tests before commit, release-tag checks
 tools/check-openspec-archived.sh      release gate: no open OpenSpec changes
 .claude/agents/release-reviewer.md    clean-context pre-release review agent
+.claude/settings.json                 Claude Code hook wiring (lint, tests, release-tag checks)
+LICENSE                               MIT licence
 README.md                             for players: what it is, install, settings
 CONTRIBUTING.md                       this file
 CLAUDE.md                             imports this file into Claude Code sessions
@@ -305,7 +307,7 @@ moderation (minutes to about three workdays).
 If a pushed tag's release fails before anything is published (no CurseForge
 file, no GitHub release), fix the cause and release the next patch version;
 leave the failed tag and add a short changelog section saying it was never
-published (as 0.19.0 / 0.19.1).
+published (as 0.19.0, re-released as 0.19.1).
 
 A tag whose message contains `[no-curseforge]` gets a GitHub release only
 (e.g. to re-run a release without uploading twice).
