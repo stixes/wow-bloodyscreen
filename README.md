@@ -1,12 +1,14 @@
 # Bloody Screen Forever
 
-**For all my rogues, fury warriors and druids out there.**
+**Feel every hit.**
 
-When your target is taking a beating, your screen shows it: blood splatters
-across your view, then fades as quickly as it came. Plus a slim energy or rage
-bar right under your character, with combo points as little beads of blood.
+Crits and combo points splash blood across your screen. It stains the world
+instead of covering it, then fades as fast as it came, so your rotation stops
+being numbers and starts feeling like a fight.
 
-A port of Feador's classic **Bloody Screen** addon to **WoW Forever**.
+For rogues, fury warriors, cat druids and anyone who lives for the crit. Plus
+a slim energy or rage bar right under your character, with combo points as
+little beads of blood.
 
 ## What you get
 
@@ -62,7 +64,7 @@ Tested in game on rogues and warriors. Druids should work but haven't been
 tested in game yet, and neither has *Disable in raids* inside a raid. Found a
 problem? [Open an issue](https://github.com/stixes/wow-bloodyscreen/issues).
 
-## Differences from the original
+## Compared with the original Bloody Screen
 
 - WoW Forever closes the combat log to addons, so the game can't say who
   landed a crit. Every crit your target takes while you're in combat counts.

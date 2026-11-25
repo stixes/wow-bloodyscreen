@@ -4,6 +4,10 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
+## Unreleased
+
+* The addon list description now says what the addon does for you rather than where it came from.
+
 ## 0.19.2
 
 * New defaults: the energy bar is easier to see (80% opacity in combat, 25% out of combat, was 40% / 15%), and *Avoid the centre* is on, so splatters stay off your character. Your saved settings are kept; `/bs reset` or the Defaults button in the settings panel picks up the new defaults.

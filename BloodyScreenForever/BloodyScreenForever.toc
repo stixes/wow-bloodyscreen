@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Bloody Screen |cffb01010Forever|r
-## Notes: Blood on your screen for combo points and every crit your target takes, plus a slim energy or rage bar under your character. For rogues, warriors, druids and every crit-loving class. A port of Feador's Bloody Screen for WoW Forever.
+## Notes: Feel every hit: crits and combo points splash blood across your screen, with a slim energy or rage bar and blood-bead combo points under your character. For rogues, warriors, druids and every crit-loving class.
 ## Author: stixes
 ## Version: 0.19.2
 ## SavedVariables: BloodyScreenForeverDB
