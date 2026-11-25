@@ -184,7 +184,16 @@ local function Print(msg) print(PREFIX .. msg) end
 -- (0 at once, the real count ~1 s later from the server), while
 -- UnitPower("player", ComboPoints) only changes when points are gained or
 -- spent. Measured with /bs trace on build 16001. UnitPower is the fallback.
+-- A dead target holds no points (as in vanilla): after a kill the game can
+-- report the count again, which made the splatters fade and then come back.
+local function TargetDead()
+    if not UnitIsDead then return false end
+    local ok, dead = pcall(UnitIsDead, "target")
+    return ok and Readable(dead) and dead == true
+end
+
 local function ComboOnTarget()
+    if TargetDead() then return 0 end
     if GetComboPoints then
         local ok, cur = pcall(GetComboPoints, "player", "target")
         if ok and Readable(cur) and type(cur) == "number" then return cur end
@@ -683,6 +692,7 @@ local function TraceSample()
         { "UnitPower(target)", TV(UnitPower, "target", COMBO) },
         { "GetComboPoints(player,target)", TV(GetComboPoints, "player", "target") },
         { "GetComboPoints(player)", TV(GetComboPoints, "player") },
+        { "UnitIsDead(target)", TV(UnitIsDead, "target") },
         { "baubles", tostring(ns.baubleCount) },
         { "splatters", (function() local n = 0 for i = 0, db.max - 1 do
             local s = slots[i] if s and s.tex:IsShown() and not s.fading then n = n + 1 end end return tostring(n) end)() },

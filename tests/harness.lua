@@ -270,6 +270,44 @@ check("replay: ...and its splatter fades in, not pops (step "..tostring(st[#st])
 run(1); n = splat(); check("replay: settles at 1 splatter", n==1)
 fire("PLAYER_TARGET_CHANGED"); onTarget=0; run(0.3); onTarget=1; power=1; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS")
 n, st = splat(); check("replay: hit 0.3 s after a switch pops instantly (steps "..table.concat(st,",").." incl. the old one fading out)", st[1]==1 and st[2] ~= 1)
+-- the target dies (splatters-fade-on-target-death): a dead target holds no points,
+-- even when the count comes back after the kill (from GetComboPoints or stale UnitPower)
+local dead = false
+UnitIsDead = function(u) if u ~= "target" then return false end if dead == "throw" then error("patched") end return dead end
+-- runs `sec` seconds and reports whether the splatter count rose again after hitting 0
+local function comeback(sec) local min, back = vis(), false
+  for _ = 1, math.floor(sec/0.02) do run(0.02); local v = vis(); if v < min then min = v elseif v > min then back = true end end
+  return back end
+local function kill(cpAfter, gcpAfter) -- 3 points up, then the mob dies; the count returns 0.5 s later
+  ns.ClearNow(); dead = false; onTarget = 3; power = 3; fire("UNIT_POWER_UPDATE","player","COMBO_POINTS"); run(1)
+  local before = vis()
+  dead = true; onTarget = 0; run(0.1); local beadsAtKill = baub()
+  local back1 = comeback(0.4); onTarget = gcpAfter; power = cpAfter; local back2 = comeback(2)
+  return before, beadsAtKill, back1 or back2 end
+local before, bk, back = kill(3, 3)
+check("death: 3 splatters before the kill ("..before..")", before == 3)
+check("death: beads empty at the kill ("..bk..")", bk == 0)
+check("death: splatters fade out once and don't come back when GetComboPoints reports 3 again ("..vis()..")", not back and vis() == 0)
+check("death: beads stay empty over the corpse ("..baub()..")", baub() == 0)
+before, bk, back = kill(3, nil)
+check("death: no comeback either when GetComboPoints gives nil and UnitPower is a stale 3 ("..vis()..")", not back and vis() == 0 and baub() == 0)
+-- next living target: its 2 points arrive ~0.9 s after the switch and fade in
+dead = false; onTarget = 0; fire("PLAYER_TARGET_CHANGED"); barState.onEvent(nil, "PLAYER_TARGET_CHANGED"); run(0.8); onTarget = 2; run(0.1)
+n, st = splat(); check("death: next living target's 2 points fade in (n "..n..", step "..tostring(st[#st])..")", n == 2 and st[#st] > 1)
+run(1); check("death: ...settles at 2 splatters, beads 2 ("..vis()..", "..baub()..")", vis() == 2 and baub() == 2)
+-- dead state unreadable: the count decides, as before
+for _, how in ipairs({ "secret", "throw", "missing" }) do
+  ns.ClearNow(); onTarget = 3; power = 3; dead = (how == "secret") and SECRET or (how == "throw" and "throw" or true)
+  local saved = UnitIsDead; if how == "missing" then UnitIsDead = nil end
+  run(1); check("death check "..how..": splatters follow the count as before (3: "..vis()..")", vis() == 3 and baub() == 3)
+  UnitIsDead = saved
+end
+local wasCombat, wasSecret, wasOff = inCombatFlag, secret, ns.off.crits
+inCombatFlag, secret, ns.off.crits = true, false, false
+mode("crittimed"); dead = true; crit(); crit(); run(0.1)
+check("death: a dead target leaves timed crit splatters alone (2: "..vis()..")", vis() == 2)
+mode("combo"); inCombatFlag, secret, ns.off.crits = wasCombat, wasSecret, wasOff
+dead = false; onTarget = 0; power = 0; run(1); ns.ClearNow()
 GetComboPoints = nil
 -- hide when full out of combat
 secretPower=false; energy=100; power=0; onTarget=0
@@ -485,8 +523,12 @@ check("warrior: rage decayed -> hidden again, poll detached", barState.alpha == 
 local tr = barState.tracer
 local hiddenBefore = tr and not tr:IsShown()
 print = function() end; SlashCmdList.BLOODYSCREENFOREVER("trace"); local shownDuring = tr and tr:IsShown()
+barState.traceUpdate()
 SlashCmdList.BLOODYSCREENFOREVER("trace"); print = realPrint
 check("/bs trace frame is hidden (no OnUpdate) except while tracing", hiddenBefore and shownDuring and not tr:IsShown())
+local traceDead = false
+for _, l in ipairs(ns.db.trace or {}) do if l:find("UnitIsDead(target) = ", 1, true) then traceDead = true end end
+check("/bs trace logs whether the target is dead", traceDead)
 GetComboPoints = nil
 
 

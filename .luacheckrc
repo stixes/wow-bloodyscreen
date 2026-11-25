@@ -55,7 +55,7 @@ else
         "CreateSettingsListSectionHeaderInitializer", "CreateSettingsButtonInitializer",
         -- units and power
         "UnitPower", "UnitPowerMax", "UnitPowerType", "UnitClass", "UnitName",
-        "UnitAffectingCombat", "InCombatLockdown", "GetComboPoints", "Enum", "IsInInstance",
+        "UnitAffectingCombat", "InCombatLockdown", "GetComboPoints", "UnitIsDead", "Enum", "IsInInstance",
         -- secret values (Midnight/Forever)
         "issecretvalue", "canaccessvalue",
         -- client info and helpers

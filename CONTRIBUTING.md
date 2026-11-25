@@ -111,6 +111,9 @@ a part back on (the settings panel needs a `/reload`).
   On a switch (new), the old set fades out and the new target's set fades in
   when its count arrives. Points gained on a hit, which do fire a power event,
   appear instantly. The baubles use the same count.
+  A dead target (`UnitIsDead("target")`, when readable) counts as 0 points, as
+  in vanilla: after a kill the count could come back and redraw the splatters
+  over the corpse.
 - **Automatic (new).** Worked out per character: combo points for a rogue or
   a druid in cat form, otherwise *Crits - hide after the timer (each splatter)*.
   It is worked out again on login, on entering the world and when a druid
