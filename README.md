@@ -18,7 +18,9 @@ little beads of blood.
 - **Energy bar.** A small, translucent bar for your energy, rage or mana just
   below your character, so you never have to look away from the fight. Combo
   points sit under it as beads of blood. It fades out when you're idle.
-- **Small and quiet.** No UI makeover, just a small addition to the default
+- **Immersion that doesn't get in your way.** Splatters stay off your
+  character and fade when the moment's over, and they're off in battlegrounds
+  and arenas by default. No UI makeover, just a small addition to the default
   interface (custom UIs should work too). Safe defaults, few settings,
   nothing to set up.
 
