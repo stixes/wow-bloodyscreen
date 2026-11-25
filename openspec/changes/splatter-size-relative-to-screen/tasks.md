@@ -22,11 +22,11 @@
 
 Only what needs the real game; everything else is in the harness.
 
-- [ ] 4.1 After updating and logging in, `/bs debug`: the `screen:` line shows `h=1024 scale=0.75 eff=0.75` (matching the `/dump` measurement) and `physical=2560x1440`, or `physical=?` if the game doesn't provide it
-- [ ] 4.2 Your custom size (346) converts to 34% (346 / 1024): the slider shows 34%, and `/bs test` splatters look the same size as before the update
-- [ ] 4.3 Press Defaults (or `/bs reset`), then `/bs test`: splatters at 35% look right, not oversized or tiny. If they're off, say bigger or smaller and the default gets adjusted before archiving
-- [ ] 4.4 In a fight, build five combo points: the five splatters vary a little in size and angle and still look like a set; none sits on your character with *Avoid the centre* on
-- [ ] 4.5 Change the UI scale (Esc > Options > Graphics/Interface) and `/bs test` again: splatters cover the same share of the screen as before
+- [x] 4.1 After updating and logging in, `/bs debug`: the `screen:` line shows `h=1024 scale=0.75 eff=0.75` (matching the `/dump` measurement) and `physical=2560x1440`, or `physical=?` if the game doesn't provide it
+- [x] 4.2 Your custom size (346) converts to 34% (346 / 1024): the slider shows 34%, and `/bs test` splatters look the same size as before the update
+- [x] 4.3 Press Defaults (or `/bs reset`), then `/bs test`: splatters at 35% look right, not oversized or tiny. If they're off, say bigger or smaller and the default gets adjusted before archiving (Owner happy at the converted 34%, close enough to confirm 35%; Defaults not pressed.)
+- [x] 4.4 In a fight, build five combo points: the five splatters vary a little in size and angle and still look like a set; none sits on your character with *Avoid the centre* on **Not tested in a fight (2026-11-25): the owner accepted it from `/bs test`, which shows the same variation; the harness covers the size range and avoid-the-centre.**
+- [x] 4.5 Change the UI scale (Esc > Options > Graphics/Interface) and `/bs test` again: splatters cover the same share of the screen as before
 
 ## Workflow follow-up
 
