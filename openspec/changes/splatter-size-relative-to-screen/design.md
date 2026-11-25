@@ -14,6 +14,9 @@ behaviour. Current state in `BloodyScreenForever.lua`:
 - `ADDON_LOADED` runs migrations (keyed on `db.version`, now 10), drops retired
   keys and fills `ns.DEFAULTS` into the saved table, so every player has every
   key saved, including `size = 266`.
+- Measured 2026-11-25 (`/dump` on 2560×1440): `UIParent:GetHeight()` = 1024,
+  scale and effective scale 0.75, so `UIParent` height = 768 / UI scale,
+  independent of resolution. Old sizes drifted with UI scale only.
 - The code assumes the screen size is final only at `PLAYER_ENTERING_WORLD`
   (comment on its `ApplyLayout` call). That is not measured.
 - Placement (`PlaceSplatter`), spacing and *Avoid the centre* read each slot's
@@ -83,14 +86,10 @@ about 35%)." Its range matches the drawing-area sliders' style.
 
 ## Risks / Trade-offs
 
-- [Forever's units already matched the original's 768-high screen, so the old
-  "px" never drifted with resolution] → the change is still right: it removes
-  the UI-scale dependency and the misleading "px" label. The debug line settles
-  which it was.
-- [The 35% default looks too big or too small on Forever] → the old 266 maps to
-  35% only if `UIParent` is 768 units high. The in-game check compares a fresh
-  35% with what 266 looked like before; adjust the default before archiving if
-  needed.
+- [Players on a UI scale below 1 who never moved the slider see bigger
+  splatters after the update (at 0.75: 26% → 35% of the screen height)] →
+  intended: it's the original's look and what the owner tuned to by hand (346
+  at 0.75 = 34%). The CHANGELOG says so and how to make them smaller.
 - [`UIParent:GetHeight()` is not final even at `PLAYER_ENTERING_WORLD` on a
   first login] → the conversion would then be slightly off, once. The debug line
   after login shows the height; the harness covers the arithmetic.
