@@ -250,7 +250,8 @@ Chat can't be copied, so the diagnostics are written to the saved variables:
 
 - `/bs debug` prints the combo point read, crit counters, energy bar state and
   whether the two per-frame scripts are running or idle (`idle: splatters=…
-  bar=…`), and saves them under `debug`. It also re-runs the self-check
+  bar=…`), the zone check (`zone:`) and the screen and splatter size
+  (`screen:`), and saves them under `debug`. It also re-runs the self-check
   (lines starting `check `) and switches parts off or back on to match.
 - The **self-check** runs at every login and saves its result under
   `selfcheck`: `build` (game version and build number from `GetBuildInfo()`,

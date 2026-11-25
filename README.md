@@ -70,8 +70,9 @@ problem? [Open an issue](https://github.com/stixes/wow-bloodyscreen/issues).
 
 - WoW Forever closes the combat log to addons, so the game can't say who
   landed a crit. Every crit your target takes while you're in combat counts.
-- New: the energy bar, the *Automatic* trigger, *Avoid the centre* and the
-  raid and battleground switches.
+- New: the energy bar, the *Automatic* trigger, *Avoid the centre*, the
+  raid and battleground switches, a splatter size that follows the screen
+  height, and a little size variation per splatter.
 - Not ported: damage-based scaling, the "also on white crits" toggle and the
   range check.
 - All art is new.
