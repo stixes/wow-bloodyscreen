@@ -2,7 +2,7 @@
 ## Title: Bloody Screen |cffb01010Forever|r
 ## Notes: Feel every hit: crits and combo points splash blood across your screen, with a slim energy or rage bar and blood-bead combo points under your character. For rogues, warriors, druids and every crit-loving class.
 ## Author: stixes
-## Version: 0.20.0
+## Version: 0.20.1
 ## SavedVariables: BloodyScreenForeverDB
 ## X-Curse-Project-ID: 1822467
 ## X-Website: https://github.com/stixes/wow-bloodyscreen

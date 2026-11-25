@@ -4,7 +4,7 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
-## Unreleased
+## 0.20.1
 
 * Rogues and cat druids: when your target dies, the combo point splatters fade out and stay gone, instead of vanishing for a moment and coming back over the corpse. The combo beads empty too.
 
