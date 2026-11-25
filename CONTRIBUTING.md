@@ -61,7 +61,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Trigger | Automatic | **Automatic** (new: combo points for rogues and druids in cat form, crits that fade after the timer for everyone else; settings are shared across your characters, so alts get the right one) / Combo points / Crits - hide when combat ends / Crits - hide after the timer (each splatter) / Crits - hide after the timer (shared). Crits are every critical hit your target takes while you're in combat, from anyone. The original defaulted to crits. |
 | Hide the splatters after | 5 s | crit timer triggers. The original: 10 s. |
 | Maximal number of splatters | 10 | |
-| Splatter size | 266 px | the original's 266 px × scale 1 |
+| Splatter size | 35% of screen height | the original's 266 units (× scale 1) on its 768-unit-high screen. Up to 0.19.x this was 266 UI units, which drifted with the UI scale. A saved old size converts once at the first login (`PLAYER_ENTERING_WORLD`) to the percentage that looks the same on that screen; a saved 266, the old default, becomes 35% |
 | Drawing area width / height | 80% × 80% | centred, in % of the screen. The original: two draggable corners, 500 × 500 px. |
 | Show energy bar | on | new, see below |
 | Position (energy bar) | −140 px | below screen centre |
@@ -88,8 +88,10 @@ a part back on (the settings panel needs a `/reload`).
 - **Slots.** There are `max` fixed slots. Slot *i* always uses shape
   (*i* mod 5) + 1, so combo points 1–5 always get shapes 1–5.
 - **Showing a splatter.** It appears at full strength with a random rotation, at
-  a random spot inside the drawing area (fully inside it). Its size is clamped
-  to the area.
+  a random spot inside the drawing area (fully inside it). Its size is
+  *Splatter size* percent of the screen height (`UIParent:GetHeight()`), times a
+  random factor of 0.85–1.15 (new, no setting) drawn with the rotation, then
+  clamped to the area.
 - **Spacing (new).** A new splatter overlaps any other on screen by at most 10%
   of the smaller one's width. If the area is too crowded for that (many large
   splatters), the best spot found is used. "Avoid the centre" always wins over
@@ -369,6 +371,10 @@ Claude Code skills are installed machine-wide, so the repo only carries
   - `InCombatLockdown()` is still `false` while `PLAYER_REGEN_DISABLED` is
     being handled, so track combat from the events themselves.
   - The combat log is closed to addons. Crits come from `UNIT_COMBAT`.
+  - `UIParent` is 768 / UI scale units high (`/dump` on 2560×1440 at UI scale
+    0.75: height 1024, scale and effective scale 0.75; one resolution measured,
+    but 1024 = 768 / 0.75 exactly). Sizes in UI units drift with the UI scale.
+    The `/bs debug` screen line shows these numbers on any setup.
 - The user prefers **few settings** and **faithfulness to the original** before
   adding features.
 

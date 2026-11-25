@@ -43,7 +43,7 @@ Type `/bs`, or open Esc > Options > AddOns > Bloody Screen.
 | Trigger | Automatic | combo points for rogues and cat druids, crits for everyone else |
 | Hide the splatters after | 5 s | for the crit triggers that hide after a timer |
 | Maximal number of splatters | 10 | lower it if big groups are too much |
-| Splatter size | 266 px | |
+| Splatter size | 35% | share of the screen height, so it looks the same at any resolution and UI scale; each splatter varies a little around it |
 | Drawing area | 80% × 80% | centred on the screen |
 | Avoid the centre | on | keeps splatters away from your character |
 | Disable in raids | off | splatters only; the energy bar stays |

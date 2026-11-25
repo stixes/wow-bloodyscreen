@@ -45,7 +45,7 @@ function ns.BuildOptions()
 
     Slider("timer", "Hide the splatters after", "For the crit timer triggers (the original: 10 s).", 1, 60, 1, "%d s")
     Slider("max", "Maximal number of splatters", "Most splatters on screen at once.", 1, 20, 1, "%d", ns.ApplyLayout)
-    Slider("size", "Splatter size", "Splatter size in pixels (the original: 266).", 50, 800, 2, "%d px")
+    Slider("sizePct", "Splatter size", "Splatter size as a share of the screen height (the original: about 35%). Each splatter varies a little around it.", 5, 100, 1, "%d%%")
     Slider("areaW", "Drawing area width", "Splatters are placed inside a centred area this share of the screen width.", 10, 100, 5, "%d%%", ns.ApplyLayout)
     Slider("areaH", "Drawing area height", "Splatters are placed inside a centred area this share of the screen height.", 10, 100, 5, "%d%%", ns.ApplyLayout)
     Settings.CreateCheckbox(category, Setting("avoidCentre", "Avoid the centre"),

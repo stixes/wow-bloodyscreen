@@ -13,10 +13,14 @@ local function Tex()
   function t:SetSize(w) self.w=w end
   function t:SetVertexColor(r) self.color=r end
   function t:SetPoint(_,_,_,x,y) self.x, self.y = x, y end
+  function t:SetRotation(r) self.rot = r end
   setmetatable(t, {__index=function() return function() end end})
   texs[#texs+1]=t; return t
 end
-UIParent = setmetatable({GetWidth=function() return 1920 end, GetHeight=function() return 1080 end}, {__index=function() return function() end end})
+local uiW, uiH, uiScale = 1920, 1080, 1 -- the screen in UI units, and the UI scale (splatter-appearance checks change them)
+UIParent = setmetatable({GetWidth=function() return uiW end, GetHeight=function() return uiH end,
+  GetScale=function() return uiScale end, GetEffectiveScale=function() return uiScale end}, {__index=function() return function() end end})
+GetPhysicalScreenSize = function() return 2560, 1440 end
 CreateFrame = function(_, name, parent, template)
   local f = {w=0,h=0,name=name}
   if parent and parent.name == "BloodyScreenForeverEnergyBar" and not template then barState.row = f end
@@ -82,7 +86,12 @@ local dropdownTooltips = {} -- tooltips passed to Settings.CreateDropdown, check
 rawset(Settings, "CreateDropdown", function(_, _, _, tooltip) nset=nset+1; dropdownTooltips[#dropdownTooltips+1] = tooltip; return stub() end)
 CreateSettingsButtonInitializer = function() nset=nset+1; return stub() end
 local checkboxes = {} -- label -> tooltip, from Settings.CreateCheckbox
-rawset(Settings, "RegisterAddOnSetting", function(_, _, _, _, _, name) nset=nset+1; local st = stub(); rawset(st, "label", name); return st end)
+rawset(Settings, "RegisterAddOnSetting", function(_, _, key, _, _, name) nset=nset+1; local st = stub(); rawset(st, "label", name); rawset(st, "key", key); return st end)
+local sliders = {} -- key -> {lo, hi, step, fmt (the label formatter), tooltip}, from Settings.CreateSlider
+rawset(Settings, "CreateSliderOptions", function(lo, hi, step) nset=nset+1
+  local o = {lo=lo, hi=hi, step=step}; function o:SetLabelFormatter(_, fn) self.fmt = fn end; return o end)
+rawset(Settings, "CreateSlider", function(_, st, opts, tooltip) nset=nset+1
+  sliders[rawget(st, "key") or "?"] = {lo=opts.lo, hi=opts.hi, step=opts.step, fmt=opts.fmt, tooltip=tooltip}; return stub() end)
 rawset(Settings, "CreateCheckbox", function(_, st, tooltip) nset=nset+1; checkboxes[rawget(st, "label") or "?"] = tooltip or ""; return stub() end)
 local instType = "none" -- what IsInInstance reports: "none", "raid", "pvp", "arena", ...
 IsInInstance = function() return instType ~= "none", instType end
@@ -118,6 +127,8 @@ local firstLogin = capture(function() fire("ADDON_LOADED","BloodyScreenForever")
 local keys={} for k,v in pairs(ns.db) do keys[#keys+1]=k.."="..tostring(v) end table.sort(keys)
 print("migrated:", table.concat(keys," "), "| settings calls", nset)
 check("self-check, first install, every check passes: no chat line ("..#firstLogin..")", #firstLogin == 0)
+check("size: a saved 300 on a 1080-high screen converts to 28% at login, old key gone ("..tostring(ns.db.sizePct)..")",
+  ns.db.sizePct == 28 and ns.db.size == nil)
 -- combo
 for i=1,5 do cp(i) end
 check("combo 5 points -> 5 visible, slot shapes 1..5 at step 1: "..shapes(), vis()==5 and shapes()=="1_1,2_1,3_1,4_1,5_1")
@@ -377,8 +388,8 @@ check("Trigger tooltip: crits from anyone (\"taking a beating\", pets, group)",
 -- settings version 10: a saved strict value is dropped, the trigger kept
 BloodyScreenForeverDB = { mode="critshared", strict=true, max=6, version=9 }
 fire("ADDON_LOADED","BloodyScreenForever")
-check("migration 9 -> 10: strict dropped, trigger and max kept",
-    ns.db.version == 10 and ns.db.strict == nil and ns.db.mode == "critshared" and ns.db.max == 6)
+check("migration 9 -> 11: strict dropped, trigger and max kept",
+    ns.db.version == 11 and ns.db.strict == nil and ns.db.mode == "critshared" and ns.db.max == 6)
 
 -- idle-no-cost: no per-frame work while nothing is shown or pending ------
 print = function() end; SlashCmdList.BLOODYSCREENFOREVER("default"); print = realPrint
@@ -564,8 +575,8 @@ fire("ADDON_LOADED","BloodyScreenForever")
 check("fresh install: raids off, battlegrounds on", ns.db.offInRaids == false and ns.db.offInBattlegrounds == true)
 BloodyScreenForeverDB = { mode="critshared", max=6, version=10 }
 fire("ADDON_LOADED","BloodyScreenForever")
-check("upgrade from version 10: gains raids off, battlegrounds on, keeps the rest, stays at 10",
-    ns.db.offInRaids == false and ns.db.offInBattlegrounds == true and ns.db.mode == "critshared" and ns.db.max == 6 and ns.db.version == 10)
+check("upgrade from version 10: gains raids off, battlegrounds on, keeps the rest, now 11",
+    ns.db.offInRaids == false and ns.db.offInBattlegrounds == true and ns.db.mode == "critshared" and ns.db.max == 6 and ns.db.version == 11)
 BloodyScreenForeverDB = { mode="auto", offInBattlegrounds=false, version=10 }
 fire("ADDON_LOADED","BloodyScreenForever")
 check("a saved untick of Disable in battlegrounds survives a reload", ns.db.offInBattlegrounds == false)
@@ -699,6 +710,68 @@ clear(); inCombatFlag = false; fire("PLAYER_REGEN_ENABLED")
 printed = {}
 print = function(...) printed[#printed+1] = table.concat({...}, " ") end; SlashCmdList.BLOODYSCREENFOREVER("help"); print = realPrint
 check("/bs help lists no selftest command", not table.concat(printed, "\n"):lower():find("selftest"))
+-- splatter-appearance: size as a share of the screen height ------------------
+local function convert(size, h) -- a saved legacy size, then the first login on a screen h units high
+  uiH = h; BloodyScreenForeverDB = { size=size, version=10 }
+  local before
+  capture(function() fire("ADDON_LOADED","BloodyScreenForever"); before = ns.db.sizePct; fire("PLAYER_ENTERING_WORLD") end)
+  return before, ns.db.sizePct, ns.db.size end
+local b, pct, old = convert(266, 1080)
+check("size: old default 266 becomes the new default 35% ("..tostring(pct)..")", pct == 35 and old == nil)
+check("size: no default filled in before the conversion at login ("..tostring(b)..")", b == nil)
+b, pct = convert(346, 1024)
+check("size: 346 at UI scale 0.75 (1024 high) converts to 34% ("..tostring(pct)..")", pct == 34)
+b, pct = convert(2000, 1080); check("size: a huge saved size clamps to 100% ("..tostring(pct)..")", pct == 100)
+b, pct = convert(10, 1080); check("size: a tiny saved size clamps to 5% ("..tostring(pct)..")", pct == 5)
+uiH = 2160; capture(function() fire("PLAYER_ENTERING_WORLD") end)
+check("size: converted only once, a later login on another screen keeps 5% ("..tostring(ns.db.sizePct)..")", ns.db.sizePct == 5)
+BloodyScreenForeverDB = { size=300, version=10 }; uiH = 1080
+capture(function() fire("ADDON_LOADED","BloodyScreenForever"); SlashCmdList.BLOODYSCREENFOREVER("reset"); fire("PLAYER_ENTERING_WORLD") end)
+check("size: /bs reset gives 35% and an unconverted old size can't undo it ("..tostring(ns.db.sizePct)..")",
+  ns.db.sizePct == 35 and ns.db.size == nil)
+BloodyScreenForeverDB = {}; capture(function() fire("ADDON_LOADED","BloodyScreenForever"); fire("PLAYER_ENTERING_WORLD") end)
+check("size: fresh install is 35%", ns.db.sizePct == 35)
+
+-- base size and variation: 35% of 1080 = 378, each splatter 0.85-1.15 x that
+local function testSizes(rounds) local sz, rots = {}, {}
+  for _=1,rounds do SlashCmdList.BLOODYSCREENFOREVER("test")
+    for _,t in ipairs(texs) do if t.shown and tostring(rawget(t,"path")):find("Splatter") then sz[#sz+1]=t.w; rots[t.rot or "nil"]=true end end
+    ns.ClearNow(); run(0.6) end
+  local lo, hi, sum, distinct, nr = math.huge, 0, 0, {}, 0
+  for _,w in ipairs(sz) do lo=math.min(lo,w); hi=math.max(hi,w); sum=sum+w; distinct[w]=true end
+  local nd = 0 for _ in pairs(distinct) do nd=nd+1 end
+  for _ in pairs(rots) do nr=nr+1 end
+  return #sz, lo, hi, sum/math.max(1,#sz), nd, nr end
+ns.db.areaW, ns.db.areaH, ns.db.max, ns.db.avoidCentre = 100, 100, 20, false; ns.ApplyLayout()
+local n, lo, hi, mean, nd, nr = testSizes(10)
+check(("size: %d splatters at 35%% of 1080 all within 321-435 (%.0f-%.0f)"):format(n, lo, hi), n == 200 and lo >= 378*0.85 and hi <= 378*1.15)
+check(("size: splatters vary (%d distinct sizes), mean %.0f within 5%% of 378"):format(nd, mean), nd > 1 and math.abs(mean-378) <= 378*0.05)
+check("rotation: still random on every appearance ("..nr.." distinct angles)", nr > 1)
+uiH = 2160; fire("DISPLAY_SIZE_CHANGED")
+n, lo, hi = testSizes(2)
+check(("size: on a 2160-high screen the base is 756 (%.0f-%.0f)"):format(lo, hi), lo >= 756*0.85 and hi <= 756*1.15)
+uiH, uiScale = 1024, 0.75; fire("UI_SCALE_CHANGED")
+n, lo, hi = testSizes(2)
+check(("size: after a UI scale change (1024 high) the base is 358 (%.0f-%.0f)"):format(lo, hi), lo >= 358.4*0.85 and hi <= 358.4*1.15)
+
+-- /bs debug screen line
+L = dbg(); local sl = "" for _, l in ipairs(L) do if l:find("screen:") then sl = l end end
+check("/bs debug screen line: "..sl, sl:find("h=1024") and sl:find("scale=0.75") and sl:find("eff=0.75")
+  and sl:find("physical=2560x1440") and sl:find("splatter=358") and sl:find("%(35%%%)"))
+local savedPhys = GetPhysicalScreenSize
+GetPhysicalScreenSize = nil; L = dbg(); sl = "" for _, l in ipairs(L) do if l:find("screen:") then sl = l end end
+check("/bs debug screen line without GetPhysicalScreenSize: physical=? ("..sl..")", sl:find("physical=%?"))
+GetPhysicalScreenSize = function() error("no") end; L = dbg(); sl = "" for _, l in ipairs(L) do if l:find("screen:") then sl = l end end
+check("/bs debug screen line when GetPhysicalScreenSize errors: physical=? ("..sl..")", sl:find("physical=%?"))
+GetPhysicalScreenSize = savedPhys
+
+-- settings panel slider
+local sp = sliders.sizePct
+check("panel: Splatter size slider is a percentage, 5-100 ("..(sp and (sp.lo.."-"..sp.hi.." "..sp.fmt(35)) or "missing")..")",
+  sp and sp.lo == 5 and sp.hi == 100 and sp.step == 1 and sp.fmt(35) == "35%")
+check("panel: no pixel size slider left", sliders.size == nil)
+uiW, uiH, uiScale = 1920, 1080, 1; capture(function() SlashCmdList.BLOODYSCREENFOREVER("reset") end); ns.ClearNow()
+
 check("never idle with a splatter on screen (incl. self-check): "..idleViolations.." violations", idleViolations == 0)
 
 if failures > 0 then

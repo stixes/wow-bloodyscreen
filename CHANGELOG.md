@@ -7,6 +7,9 @@ Each release reads its notes from the `## <version>` section matching
 ## Unreleased
 
 * The addon list description now says what the addon does for you rather than where it came from.
+* *Splatter size* is now a share of the screen height (default 35%, the original's size), so splatters look the same at any resolution and UI scale. The slider shows `%` instead of `px`.
+* Your custom splatter size is converted once at your first login after the update and looks the same as before. If you kept the default and play with a UI scale below 1, your splatters get somewhat bigger (the original's size); lower *Splatter size* in `/bs` if you prefer them smaller.
+* Each splatter now varies a little in size, as well as in rotation, so a set of combo points looks splashed rather than stamped.
 
 ## 0.19.2
 

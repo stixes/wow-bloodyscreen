@@ -29,11 +29,13 @@ local SHAPES, STEPS = 5, 10
 local FADE_STEP = 0.05     -- s per pre-faded step: 10 steps = the original's 0.5 s fade
 local MAX_SLOTS = 20
 local CENTRE_ZONE = 0.20   -- "avoid the centre": centred zone, this share of screen width and height
-local SETTINGS_VERSION = 10 -- 10: strict removed (crits from anyone)
+local SETTINGS_VERSION = 11 -- 10: strict removed (crits from anyone); 11: size in % of screen height
 local MAX_OVERLAP = 0.10   -- splatters overlap by at most this share of the smaller one's width
 local BLOOD_RADIUS = 0.75  -- the blood fills roughly this share of a texture's half-size
 local PLACE_TRIES = 60
-local PlaceSplatter
+local SIZE_VARIATION = 0.15 -- each splatter's size varies this share above or below the setting
+local OLD_DEFAULT_SIZE = 266 -- the old default in UI units; a saved 266 was never changed
+local PlaceSplatter, BaseSize
 local Wake, Sleep -- attach / detach the per-frame script (defined with it below)
 local SelfCheck, NoteCritFlag -- the patch self-check (defined near the end)
 
@@ -58,7 +60,7 @@ ns.DEFAULTS = {
     mode        = "auto",
     timer       = 5,     -- BS_Timer_RunTime
     max         = 10,    -- BS_MaximumTextures
-    size        = 266,   -- 266 px x BS_MaximalScalingFactor (1)
+    sizePct     = 35,    -- % of screen height: the original's 266 units of its 768-high screen
     areaW       = 80,    -- drawing area, centred, % of screen width
     areaH       = 80,    -- % of screen height
     avoidCentre = true,  -- keep splatters off the centre ~20% around your character
@@ -271,11 +273,18 @@ PlaceSplatter = function(i, size, rw, rh)
     return bx, by
 end
 
+-- The set splatter size in UI units: a share of the screen height, so it looks
+-- the same at any resolution and UI scale (UIParent is 768 / UI scale units high).
+BaseSize = function()
+    return (db.sizePct or ns.DEFAULTS.sizePct) / 100 * UIParent:GetHeight()
+end
+
 -- fadeIn: step in from nearly white (target switch) instead of appearing at once (hit).
 local function ShowSlot(i, fadeIn)
     local s = Slot(i)
     local w, h = area:GetWidth(), area:GetHeight()
-    local size = math.min(db.size, w, h) -- the original clamps to the drawing area
+    -- a little random size per splatter (new), then the original's clamp to the drawing area
+    local size = math.min(BaseSize() * (1 - SIZE_VARIATION + math.random() * 2 * SIZE_VARIATION), w, h)
     s.fading = false
     if fadeIn then
         s.step, s.fadingIn, s.nextStep = STEPS, true, GetTime() + FADE_STEP
@@ -342,6 +351,25 @@ function ns.ApplyLayout()
     area:SetPoint("CENTER", UIParent, "CENTER")
     area:SetSize(UIParent:GetWidth() * db.areaW / 100, UIParent:GetHeight() * db.areaH / 100)
     ClearNow()
+end
+
+-- /bs debug: how the client maps UI units to the screen. Layout values, not
+-- combat data, but every read is guarded so a client change can't break debug.
+function ns.ScreenLine()
+    local function Num(obj, method)
+        local ok, v = pcall(obj[method], obj)
+        if not ok or v == nil or IsSecret(v) then return "?" end
+        return ("%.4g"):format(v)
+    end
+    local phys = "?"
+    if GetPhysicalScreenSize then
+        local ok, pw, ph = pcall(GetPhysicalScreenSize)
+        if ok and type(pw) == "number" and type(ph) == "number" then phys = ("%dx%d"):format(pw, ph) end
+    end
+    local bok, base = pcall(BaseSize)
+    return ("screen: h=%s scale=%s eff=%s physical=%s splatter=%s (%s%%)"):format(
+        Num(UIParent, "GetHeight"), Num(UIParent, "GetScale"), Num(UIParent, "GetEffectiveScale"), phys,
+        bok and ("%.0f"):format(base) or "?", tostring(db.sizePct or ns.DEFAULTS.sizePct))
 end
 
 -- Preview: show every slot (the original did this while its config was open).
@@ -548,7 +576,8 @@ function handlers.ADDON_LOADED(name)
         db[k] = nil
     end
     for k, v in pairs(ns.DEFAULTS) do
-        if db[k] == nil then db[k] = v end
+        -- a legacy pixel size is converted at PLAYER_ENTERING_WORLD (screen size final)
+        if db[k] == nil and not (k == "sizePct" and db.size ~= nil) then db[k] = v end
     end
     if not MODE_OK[db.mode] then db.mode = ns.DEFAULTS.mode end
     db.max = math.max(1, math.min(MAX_SLOTS, math.floor(db.max)))
@@ -567,7 +596,22 @@ function handlers.ADDON_LOADED(name)
     ns.critFlag, ns.off.crits = "pending", nil
 end
 
+-- Settings version 11: the old Splatter size in UI units becomes a share of the
+-- screen height that looks the same on this screen. Runs once (keyed on the old
+-- key, so a logout before this point just retries next login). A saved 266 was
+-- the old default, never changed: it gets the new default.
+local function ConvertSize()
+    if db.size == nil then return end
+    local old, h = tonumber(db.size), UIParent:GetHeight()
+    local pct = ns.DEFAULTS.sizePct
+    if old and old ~= OLD_DEFAULT_SIZE and h and h > 0 then
+        pct = math.max(5, math.min(100, math.floor(old / h * 100 + 0.5)))
+    end
+    db.sizePct, db.size = pct, nil
+end
+
 function handlers.PLAYER_ENTERING_WORLD()
+    ConvertSize()
     settleStart = GetTime() -- combo counts can arrive late after a loading screen too
     ns.ApplyLayout() -- screen size is final here (also resolves "auto"); wakes via ClearNow
     if ns.selfCheckPending then
@@ -873,6 +917,7 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         ToggleTrace()
     elseif cmd == "reset" or cmd == "default" then
         for k, v in pairs(ns.DEFAULTS) do db[k] = v end
+        db.size = nil -- an unconverted old size must not undo the reset at the next login
         ns.ApplyLayout()
         if ns.ApplyBar then ns.ApplyBar() end
         Print("Default settings restored.")
@@ -897,6 +942,7 @@ SlashCmdList.BLOODYSCREENFOREVER = function(msg)
         local function ZV(v) if not zok then return "n/a" end if IsSecret(v) then return "secret" end return tostring(v) end
         Log(("zone: IsInInstance=%s/%s offInRaids=%s offInBattlegrounds=%s"):format(
             ZV(zin), ZV(ztype), tostring(db.offInRaids), tostring(db.offInBattlegrounds)))
+        Log(ns.ScreenLine())
         if ns.BarDebug then for _, line in ipairs(ns.BarDebug()) do Log(line) end end
         for _, line in ipairs(SelfCheck(false)) do Log("check " .. line) end
         Log("saved - /reload to write it to disk")
