@@ -17,7 +17,9 @@ little beads of blood.
   in combat, whoever landed it: you, your pet or your group.
 - **Energy bar.** A small, translucent bar for your energy, rage or mana just
   below your character, so you never have to look away from the fight. Combo
-  points sit under it as beads of blood. It fades out when you're idle.
+  points sit under it as beads of blood. It fades out when you're idle. The one
+  exception: while a rogue's **Poised** opener is charged, the bar stays
+  visible and its border turns white.
 - **Immersion that doesn't get in your way.** Splatters stay off your
   character and fade when the moment's over, and they're off in battlegrounds
   and arenas by default. No UI makeover, just a small addition to the default
@@ -51,7 +53,7 @@ Type `/bs`, or open Esc > Options > AddOns > Bloody Screen.
 | Show energy bar | on | |
 | Position (energy bar) | 140 px below centre | |
 | Opacity in / out of combat | 80% / 25% | energy bar and combo beads |
-| Hide when idle out of combat | on | |
+| Hide when idle out of combat | on | hides the bar while your power is at rest (energy or mana full, rage empty) with no combo points; a charged Poised opener keeps it visible |
 
 Commands: `/bs test` previews the splatters, `/bs reset` restores the
 defaults, `/bs debug` prints diagnostics.

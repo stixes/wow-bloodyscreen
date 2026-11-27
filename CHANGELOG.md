@@ -4,6 +4,11 @@ Each release reads its notes from the `## <version>` section matching
 `## Version` in the TOC (tools/release.sh). Markdown. Features land under
 `## Unreleased`; at release time that heading becomes the version.
 
+## Unreleased
+
+* Rogue: when **Poised** is up (your charged opener at full energy out of combat, after Sap or Distract), the energy bar stays visible at its combat opacity and its border turns white, so you can see the opener is ready without checking your buff row. It goes back to normal as soon as the aura is gone: on the first Energy ability you spend, or when combat starts. Rogues only, and no new setting.
+* `/bs debug` has a new `bar: poised=… border=…` line showing which Poised spell the game reports on you (`none` or `unavailable` when it reports none). Whether the client reports this aura to addons at all has not been confirmed in game yet; if the border never turns white, that line says what the client answered.
+
 ## 0.20.1
 
 * Rogues and cat druids: when your target dies, the combo point splatters fade out and stay gone, instead of vanishing for a moment and coming back over the corpse. The combo beads empty too. Not yet confirmed in game; if the splatters still come back after a kill, please report it.

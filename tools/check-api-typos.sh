@@ -19,7 +19,7 @@ if [[ $status -eq 0 ]]; then
     echo "FAIL: luacheck found nothing in tests/api-typos.lua" >&2; exit 1
 fi
 fail=0
-for name in UnitPowr Aftr PowerType.ComboPoint CreateSlidr "'os'"; do
+for name in UnitPowr Aftr GetPlayerAuraBySpellId PowerType.ComboPoint CreateSlidr "'os'"; do
     if grep -qF -- "$name" <<<"$out"; then
         echo "PASS: luacheck reports $name"
     else

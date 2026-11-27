@@ -24,6 +24,7 @@ GetPhysicalScreenSize = function() return 2560, 1440 end
 CreateFrame = function(_, name, parent, template)
   local f = {w=0,h=0,name=name}
   if parent and parent.name == "BloodyScreenForeverEnergyBar" and not template then barState.row = f end
+  if template == "BackdropTemplate" then barState.border = f end -- the bar's border
   if name == nil and parent == nil then barState.tracer = f end -- the /bs trace frame
   if name == "BloodyScreenForeverEnergyBar" then barState.frame = f end
   function f:SetScript(n, fn)
@@ -42,6 +43,8 @@ CreateFrame = function(_, name, parent, template)
   function f:IsShown() return self.shown ~= false end
   function f:Hide() self.shown = false end
   function f:Show() self.shown = true end
+  function f:SetBackdrop(bd) self.backdrop = bd end
+  function f:SetBackdropBorderColor(r, g, b, a) self.bc = { r, g, b, a } end
   function f:SetStatusBarColor(r) barState.r = r end
   function f:SetAlpha(a) barState.alpha = a end
   function f:SetPoint(_,_,_,x,y) if y then barState.y = y end end
@@ -58,6 +61,14 @@ local SECRET = setmetatable({}, {
   __lt=function() error("compare secret") end, __le=function() error("compare secret") end,
   __concat=function() return "SECRET" end, __tostring=function() return "SECRET" end})
 local energy = 60
+local auraMode = "none" -- the Poised aura read: "aura" (found), "none", "throw" (no such call), "secret" (data hidden)
+local reportedIds = { [1328826] = true } -- which Poised spell the game reports for this player (empty: another class or form)
+C_UnitAuras = { GetPlayerAuraBySpellID = function(id)
+  if auraMode == "throw" then error("C_UnitAuras.GetPlayerAuraBySpellID: unknown spell") end
+  if auraMode == "secret" then return SECRET end
+  if auraMode == "none" or not (reportedIds and reportedIds[id]) then return nil end
+  return { name = "Poised", spellID = id }
+end }
 local rage = 0
 playerClass, ptype, ptoken = "ROGUE", 3, "ENERGY"
 UnitClass = function() return "Class", playerClass end
@@ -813,6 +824,108 @@ check("panel: Splatter size slider is a percentage, 5-100 ("..(sp and (sp.lo.."-
   sp and sp.lo == 5 and sp.hi == 100 and sp.step == 1 and sp.fmt(35) == "35%")
 check("panel: no pixel size slider left", sliders.size == nil)
 uiW, uiH, uiScale = 1920, 1080, 1; capture(function() SlashCmdList.BLOODYSCREENFOREVER("reset") end); ns.ClearNow()
+
+-- Poised border (energy-bar) -------------------------------------------------
+-- The rogue's Poised aura (spell 1328826) marks the bar's border white and
+-- keeps the bar visible at the in-combat opacity. auraMode switches what the
+-- game answers for that spell: "aura", "none", "throw", "secret".
+local function bcol()
+  local c = barState.border and barState.border.bc
+  return (c and c[1] == 1 and c[2] == 1 and c[3] == 1) and "white" or "normal"
+end
+local function poisedDbg() for _, l in ipairs(dbg()) do if l:find("bar: poised=") then return l end end return "" end
+secret, secretPower, barRejectsSecret, instType, power, energy = false, false, false, "none", 0, 100
+inCombatFlag = false; fire("PLAYER_REGEN_ENABLED"); auraMode = "none"
+cls("ROGUE", 3, "ENERGY"); local PL = login(); run(3.5)
+check("Poised: the bar registers UNIT_AURA for the player, and has a border frame",
+    (barState.events or ""):find("UNIT_AURA", 1, true) ~= nil and barState.border ~= nil)
+check("Poised: the bar is on, nothing off ("..tostring(barState.frame:IsShown())..", "..#PL..")", not ns.off.bar and #PL == 0)
+check("no Poised on the player: full energy out of combat -> still hidden, border normal ("..barState.alpha..", "..bcol()..")",
+    barState.alpha == 0 and bcol() == "normal" and barState.value == 100)
+check("no Poised: the debug line says none/normal ("..poisedDbg()..")",
+    poisedDbg():find("poised=none border=normal", 1, true) ~= nil)
+
+auraMode = "aura"
+barState.onEvent(nil, "UNIT_AURA", "player")
+check("opener charged: UNIT_AURA alone turns the border white ("..bcol()..")", bcol() == "white")
+check("opener charged: the bar shows at the in-combat opacity, fill and number unchanged ("..barState.alpha..", "..tostring(barState.value)..")",
+    barState.alpha == ns.db.barAlphaCombat and barState.value == 100 and barState.max == 100)
+check("Poised up: the debug line names the spell and the white border ("..poisedDbg()..")",
+    poisedDbg():find("poised=1328826 border=white", 1, true) ~= nil)
+
+auraMode = "none"
+run(0.1) -- no event at all: the bar's poll re-reads while it is awake
+check("the read stops answering with no event: the poll puts the border back ("..bcol()..", "..barState.alpha..")",
+    bcol() == "normal" and barState.alpha == 0)
+auraMode = "aura"; barState.onEvent(nil, "UNIT_AURA", "player")
+check("charged again after Sap or Distract: white, shown ("..bcol()..", "..barState.alpha..")",
+    bcol() == "white" and barState.alpha == ns.db.barAlphaCombat)
+auraMode = "none"; barState.onEvent(nil, "UNIT_AURA", "player")
+check("opener spent: the aura event alone returns the border and the idle rules ("..bcol()..", "..barState.alpha..")",
+    bcol() == "normal" and barState.alpha == 0)
+
+auraMode = "aura"; barState.onEvent(nil, "UNIT_AURA", "player")
+auraMode = "none"; enterCombat(); run(0.1) -- the game drops the aura as combat starts
+check("combat starts: border normal, bar at the in-combat opacity ("..bcol()..", "..barState.alpha..")",
+    bcol() == "normal" and barState.alpha == ns.db.barAlphaCombat)
+auraMode = "aura"; inCombatFlag = false; fire("PLAYER_REGEN_ENABLED"); barState.onEvent(nil, "PLAYER_REGEN_ENABLED")
+check("combat ends with the opener back: white, in-combat opacity ("..bcol()..", "..barState.alpha..")",
+    bcol() == "white" and barState.alpha == ns.db.barAlphaCombat)
+auraMode = "none"; barState.onEvent(nil, "PLAYER_REGEN_ENABLED"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+
+-- combo points keep the bar shown even without Poised, and Poised does not light a warrior
+energy = 60; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY")
+onT2 = 2; GetComboPoints = function(_, t) if t ~= "target" then error("needs target") end return onT2 end
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "COMBO_POINTS"); run(0.1)
+check("rogue: 2 combo points out of combat -> bar shown, border normal ("..barState.alpha..", "..bcol()..")",
+    barState.alpha == ns.db.barAlphaIdle and bcol() == "normal" and barState.row:IsShown())
+auraMode = "aura"
+barState.onEvent(nil, "UNIT_AURA", "player") -- the game reports Poised with points on the target
+check("rogue with combo points: the aura event still lights the border and brightens it ("..bcol()..", "..barState.alpha..")",
+    bcol() == "white" and barState.alpha == ns.db.barAlphaCombat)
+onT2 = 0; GetComboPoints = nil; power = 0; run(1); ns.ClearNow()
+-- a class the game gives no Poised to never sees a border change, even with the
+-- read working: it answers "no such aura on this player" for every id
+auraMode = "aura"; reportedIds = nil
+cls("WARRIOR", 1, "RAGE"); login(); rage = 0
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "RAGE"); run(0.1)
+check("warrior, aura read working: border normal, bar hidden at resting rage ("..bcol()..", "..barState.alpha..")",
+    bcol() == "normal" and barState.alpha == 0)
+cls("DRUID", 3, "ENERGY"); fire("UNIT_DISPLAYPOWER", "player"); barState.onEvent(nil, "UNIT_DISPLAYPOWER", "player")
+energy = 100; barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); run(3.5)
+check("cat druid (feral Poised left out): full energy out of combat, border normal, bar hidden ("..bcol()..", "..barState.alpha..")",
+    bcol() == "normal" and barState.alpha == 0)
+reportedIds = { [1328826] = true }
+cls("ROGUE", 3, "ENERGY"); login(); energy = 100
+
+-- the read is refused: latch off for the session, the bar is untouched
+auraMode = "throw"
+local okThrow = pcall(barState.onEvent, nil, "UNIT_AURA", "player")
+energy = 70
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); run(0.1)
+check("the aura read throws: no error out of the event handler, bar not switched off",
+    okThrow and not ns.off.bar and barState.frame:IsShown())
+check("the aura read throws: border normal, the power value still reaches SetValue, idle rules intact ("..bcol()..", "..tostring(barState.value)..", "..barState.alpha..")",
+    bcol() == "normal" and barState.value == 70 and barState.alpha == ns.db.barAlphaIdle)
+check("the aura read throws: "..poisedDbg(), poisedDbg():find("poised=unavailable border=normal", 1, true) ~= nil)
+check("the aura read throws: nothing announced off ("..tostring(gameChanged(dbg()))..")", gameChanged(dbg()) == 0)
+auraMode = "aura"; barState.onEvent(nil, "UNIT_AURA", "player"); run(0.1)
+check("a failed read latches the indicator off for the session: the answer coming back changes nothing ("..bcol()..")",
+    bcol() == "normal" and poisedDbg():find("poised=unavailable", 1, true) ~= nil)
+
+-- the same from a fresh session, with the aura data hidden instead
+assert(loadfile(dir.."/EnergyBar.lua"))("BloodyScreenForever", ns)
+PL = login(); energy = 100
+auraMode = "secret"
+local okSec = pcall(barState.onEvent, nil, "UNIT_AURA", "player")
+energy = 70
+barState.onEvent(nil, "UNIT_POWER_FREQUENT", "player", "ENERGY"); run(0.1)
+check("the aura data is hidden: no error, border normal, bar unchanged, nothing announced ("..bcol()..", "..tostring(barState.value)..", "..#PL..")",
+    okSec and bcol() == "normal" and barState.value == 70 and barState.alpha == ns.db.barAlphaIdle
+    and not ns.off.bar and #PL == 0)
+check("the aura data is hidden: the debug line says unavailable ("..poisedDbg()..")",
+    poisedDbg():find("poised=unavailable border=normal", 1, true) ~= nil)
+cls("ROGUE", 3, "ENERGY")
 
 check("never idle with a splatter on screen (incl. self-check): "..idleViolations.." violations", idleViolations == 0)
 

@@ -22,7 +22,17 @@ local DROP_FULL = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_ful
 local DROP_EMPTY = "Interface\\AddOns\\" .. ADDON .. "\\Textures\\Drops\\drop_empty"
 local MAX_BAUBLES = 10
 
-local bar, text, baubleRow
+-- Poised (rogue, Forever 1.60.1): the aura the game puts on a rogue at maximum
+-- Energy out of combat (spell 1328826; 1328825 is the passive that applies it,
+-- 1328827 is the druid's, left out). Only its presence is read - no aura
+-- fields, no comparisons, no arithmetic - and inside one pcall, so a client
+-- that hides aura data or has no such call can never break the bar.
+local POISED_IDS = { 1328826 }
+
+local bar, border, text, baubleRow
+local poisedOn, poisedId = false, nil
+local poisedKnown = true -- false once the read proves unusable: stop trying
+local poisedPainted      -- border colour actually painted, to avoid churn
 local baubles = {}
 local powerType, powerToken
 local textOK = true
@@ -68,10 +78,46 @@ local function IsFull()
     return GetTime() - lastPowerChange >= QUIET
 end
 
+-- Is the Poised aura on the player? Returns present, spell id; or no values
+-- when the read itself failed (missing API, hidden aura data).
+local function PoisedRead()
+    for _, id in ipairs(POISED_IDS) do
+        local ok, found = pcall(function()
+            local aura = C_UnitAuras.GetPlayerAuraBySpellID(id)
+            if aura == nil then return false end
+            if issecretvalue and issecretvalue(aura) then error("aura data hidden") end
+            return true
+        end)
+        if not ok then return end
+        if found then return true, id end
+    end
+    return false
+end
+
+local function SetPoised(on)
+    if not border or not border.SetBackdrop or poisedPainted == on then return end
+    poisedPainted = on
+    if on then border:SetBackdropBorderColor(1, 1, 1, 1)
+    else border:SetBackdropBorderColor(0, 0, 0, 0.8) end
+end
+
+local function UpdatePoised()
+    if not poisedKnown then return end
+    local present, id = PoisedRead()
+    if present == nil then -- unusable this session: the bar goes back to plain
+        poisedKnown, poisedOn, poisedId = false, false, nil
+    else
+        poisedOn, poisedId = present, present and id or nil
+    end
+    SetPoised(poisedOn)
+end
+
 local function UpdateAlpha()
     if not bar or not ns.db then return end
     if inCombat then
         bar:SetAlpha(ns.db.barAlphaCombat)
+    elseif poisedOn then
+        bar:SetAlpha(ns.db.barAlphaCombat) -- opener charged: shown and bright
     elseif ns.db.barHideFull and (lastCur or 0) == 0 and IsFull() then
         bar:SetAlpha(0) -- hidden, but keeps running (so it reappears on any change)
     else
@@ -181,6 +227,10 @@ function ns.BarDebug()
         ("bar: hideFull=%s IsFull=%s sinceLastPowerChange=%.1fs lastCur(combo)=%s idle=%.2f combat=%.2f"):format(
             tostring(ns.db.barHideFull), tostring(IsFull()), GetTime() - lastPowerChange, tostring(lastCur),
             ns.db.barAlphaIdle, ns.db.barAlphaCombat),
+        -- presence only: which Poised spell was found, and what the border looks like
+        ("bar: poised=%s border=%s"):format(
+            poisedKnown and tostring(poisedId or "none") or "unavailable",
+            poisedPainted and "white" or "normal"),
     }
 end
 
@@ -222,12 +272,13 @@ function ns.SetupBar()
     bg:SetAllPoints()
     bg:SetColorTexture(0, 0, 0, 0.5)
 
-    local border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+    border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
     border:SetPoint("TOPLEFT", -1, 1)
     border:SetPoint("BOTTOMRIGHT", 1, -1)
     if border.SetBackdrop then
         border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
         border:SetBackdropBorderColor(0, 0, 0, 0.8)
+        poisedPainted = false
     end
 
     text = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -240,9 +291,15 @@ function ns.SetupBar()
 
     bar:SetScript("OnEvent", function(_, event, _unit, token)
         Wake() -- none of the bar's events fire while it is truly idle
-        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+        if event == "UNIT_AURA" then
+            -- Poised appears and goes on the server's own schedule, with no
+            -- power event of its own
+            UpdatePoised()
+            UpdateAlpha()
+        elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
             inCombat = (event == "PLAYER_REGEN_DISABLED")
             lastPowerChange = GetTime() -- the quiet period starts when combat ends
+            UpdatePoised() -- combat (or combat ending) changes Poised too
             UpdateAlpha()
         elseif event == "PLAYER_TARGET_CHANGED" then
             settleStart = GetTime()
@@ -254,13 +311,15 @@ function ns.SetupBar()
             if event == "PLAYER_ENTERING_WORLD" then
                 settleStart = GetTime() -- the combo count can arrive late here too
                 inCombat = UnitAffectingCombat("player") and true or false
-                UpdateAlpha()
             end
+            UpdatePoised() -- a form change or a login: look again
+            UpdateAlpha()
             UpdateType()
         elseif token == "COMBO_POINTS" then -- power token strings are not secret
             UpdateCombo()
         elseif token == nil or token == powerToken then
             lastPowerChange = GetTime()
+            UpdatePoised() -- power moved, so the opener is gone (or just arrived)
             UpdateValue()
         end
     end)
@@ -283,7 +342,10 @@ function ns.SetupBar()
             UpdateCombo()
             -- at full power no power events arrive, and right after combat the
             -- value may still be secret for a moment: re-check "full" here
-            if not inCombat then UpdateAlpha() end
+            if not inCombat then
+                if poisedOn then UpdatePoised() end -- a lit border never goes stale
+                UpdateAlpha()
+            end
             if not Busy(GetTime()) then
                 awake = false
                 bar:SetScript("OnUpdate", nil)
@@ -300,6 +362,7 @@ function ns.SetupBar()
     bar:RegisterUnitEvent("UNIT_POWER_FREQUENT", "player")
     bar:RegisterUnitEvent("UNIT_MAXPOWER", "player")
     bar:RegisterUnitEvent("UNIT_DISPLAYPOWER", "player")
+    bar:RegisterUnitEvent("UNIT_AURA", "player")
     bar:RegisterEvent("PLAYER_ENTERING_WORLD")
     bar:RegisterEvent("PLAYER_REGEN_DISABLED")
     bar:RegisterEvent("PLAYER_REGEN_ENABLED")
