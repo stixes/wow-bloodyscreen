@@ -8,11 +8,16 @@ set -uo pipefail
 root=${CLAUDE_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}
 cmd=$(jq -r '.tool_input.command // empty')
 git_re='(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+'
-grep -qE "${git_re}(tag|push)[[:space:]].*([[:space:]](refs/tags/)?v[0-9]|--tags)" <<<"$cmd" || exit 0
+grep -qE "${git_re}(tag|push)([[:space:]]+[^[:space:]]+)*([[:space:]]+(refs/tags/)?v[0-9]|[[:space:]]+--tags([[:space:]]|$))" <<<"$cmd" || exit 0
 grep -qE "${git_re}(tag|push)([[:space:]]+[^[:space:]]+)*[[:space:]]+(-d|--delete)([[:space:]]|$)" <<<"$cmd" && exit 0
 
 cd "$root" || exit 0
 out=$(tools/check-openspec-archived.sh HEAD 2>&1) || { echo "Release tag blocked: $out" >&2; exit 2; }
+# HEAD only sees committed changes; a draft change sitting untracked in the
+# working tree must block a tag too. (The archive/ exclusion keeps a just-
+# archived change from being counted as open.)
+uncommitted=$(git status --porcelain -- 'openspec/changes' ':!openspec/changes/archive' | head -1)
+[[ -z "$uncommitted" ]] || { echo "Release tag blocked: uncommitted OpenSpec changes under openspec/changes/. Commit them (or archive the change) before tagging." >&2; exit 2; }
 
 # A clean-context review (the release-reviewer agent) must have run for this
 # version: its report and how each finding was handled, in dist/ (git-ignored).

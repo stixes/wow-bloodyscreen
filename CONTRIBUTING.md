@@ -2,7 +2,10 @@
 
 How the addon works and how it's built, tested and released. Player-facing
 docs are in [README.md](README.md). This file is also the working guide for
-Claude Code sessions (loaded through `CLAUDE.md`).
+Claude Code sessions (imported by `CLAUDE.md`) and OpenCode sessions (listed
+in the `instructions` array of `.opencode/opencode.jsonc` - OpenCode loads
+`CLAUDE.md` as its instruction file here, but does not expand the `@` import
+syntax).
 
 ## About this port
 
@@ -31,14 +34,18 @@ tools/release.sh                      upload to CurseForge (run by the release w
 tools/forever-patch.sh                bump the TOC for a new Forever version
 tools/wow-api/                        fetch the WoW Forever API list for luacheck (update.sh, pin)
 tools/check-api-typos.sh              CI: check that luacheck catches API typos
-tools/hooks/                          Claude Code hooks: lint on edit, tests before commit, release-tag checks
+tools/hooks/                          guard scripts: lint on edit, tests before commit, release-tag checks
 tools/check-openspec-archived.sh      release gate: no open OpenSpec changes
-.claude/agents/release-reviewer.md    clean-context pre-release review agent
-.claude/settings.json                 Claude Code hook wiring (lint, tests, release-tag checks)
+.claude/settings.json                 Claude Code hook wiring of tools/hooks/
+.claude/agents/release-reviewer.md    clean-context pre-release review agent (Claude Code)
+.opencode/opencode.jsonc              OpenCode config: lists this file as an instruction source
+.opencode/plugins/checks.ts           OpenCode wiring of the same tools/hooks/ scripts
+.opencode/agents/release-reviewer.md  the same review agent, as an OpenCode subagent
 LICENSE                               MIT licence
 README.md                             for players: what it is, install, settings
 CONTRIBUTING.md                       this file
 CLAUDE.md                             imports this file into Claude Code sessions
+                                      (OpenCode reads it, but not the import)
 .luacheckrc                           luacheck config (WoW globals)
 tests/harness.lua                     stubbed-API test harness
 tests/api-typos.lua                   deliberate API typos luacheck must catch
@@ -66,7 +73,7 @@ Two sections, **Blood splatters** and **Energy bar**. The splatter settings are 
 | Show energy bar | on | new, see below |
 | Position (energy bar) | −140 px | below screen centre |
 | Energy bar opacity in / out of combat | 80% / 25% | also applies to the combo points |
-| Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. |
+| Hide when idle out of combat | on | hides the bar (and baubles) out of combat while your power is at rest (energy or mana full, rage empty) and you have no combo points. Forever keeps the player's energy secret even out of combat (`/bs debug`, build 16001), so "at rest" means 3 s out of combat with no power change. A charged Poised opener (rogue) is the one state that keeps it visible. |
 | Avoid the centre | on | new: keeps splatters off the centre zone (20% of screen width × height) around your character |
 | Disable in raids | off | new: no splatters inside raid instances (any trigger, combo points too). A raid group out in the world doesn't count. The energy bar and combo beads stay. Not tried inside a raid yet. |
 | Disable in battlegrounds | on | new: no splatters inside battlegrounds and arenas. The energy bar and combo beads stay. |
@@ -153,6 +160,22 @@ can display it but can't compare it or do maths with it. The bar passes
 the client rejects the text, the number is dropped once and the bar keeps
 working.
 
+**Poised border (rogue).** Forever 1.60.1 gives rogues Poised: at maximum energy
+out of combat the game applies the aura *Poised* (spell 1328826, from the
+passive 1328825; the druid's is 1328827, left out) and the next Energy ability
+costs 10 less. While `C_UnitAuras.GetPlayerAuraBySpellID` reports that aura on
+the player, the bar's border is white, the bar stays visible whatever *Hide when
+idle out of combat* says, and it uses the in-combat opacity. The aura is looked
+up by spell id (aura names follow the client locale) and only its presence is
+read, inside one `pcall`: a client that has no such call or hides the aura data
+latches the indicator off for the session, the border never changes and the bar
+behaves as it did before. It is re-read on events (`UNIT_AURA` for `player`, the
+REGEN events, `UNIT_DISPLAYPOWER`, `PLAYER_ENTERING_WORLD`, power events) and,
+while the border is lit, by the bar's poll; the bar does no extra per-frame work
+when the aura is off. `/bs debug` has a `bar: poised=<id|none|unavailable>
+border=<white|normal>` line, which is how the unmeasured parts get checked in
+game.
+
 ## What had to change
 
 - **Crit detection.** The original read the combat log
@@ -232,15 +255,25 @@ original's format, so they draw the same way: 5 shapes × 10 pre-faded steps,
 5. Commit. Add anything user-visible to `CHANGELOG.md` under `## Unreleased`;
    don't bump `## Version` (the version is picked at release time).
 
-**Claude Code hooks** (`.claude/settings.json`, active when Claude Code is
-started inside this repo):
+**Edit and commit guards.** `tools/hooks/` holds the checks; both agent
+harnesses wire the same scripts, so a session behaves the same whichever
+agent drives it:
 - After every edit of a `.lua` file, `tools/hooks/lua-lint.sh` runs a luajit
-  syntax check and luacheck, and feeds the findings back to Claude.
+  syntax check and luacheck, and feeds the findings back to the agent.
 - Before every `git commit`, `tools/hooks/pre-commit-tests.sh` runs the syntax
-  check, luacheck and the harness, and blocks the commit if any fails.
+  check (addon and test files), luacheck and the harness, and blocks the
+  commit if any fails.
 - Before creating or pushing a `v*` tag, `tools/hooks/pre-release-tag.sh`
-  blocks it while an OpenSpec change is open or the release review record is
-  missing (see "Releasing").
+  blocks it while an OpenSpec change is open (committed or uncommitted) or the
+  release review record is missing (see "Releasing").
+
+Claude Code wires them in `.claude/settings.json` (native hooks). OpenCode has
+no hooks of its own (no `hooks` key in its config schema), so
+`.opencode/plugins/checks.ts` adapts them to OpenCode's plugin API: lint
+findings are appended to each `write`/`edit` result, and commit and release-tag
+commands are denied before they run. The OpenCode guards cover the same three
+cases; they cannot cover OpenCode's own git tools (none exist here - the agent
+must use the shell).
 
 All three need `luajit`, `luacheck` and `jq` on the machine (`brew install luacheck`).
 CI runs the same lint (always with the generated list) and harness, plus
@@ -251,10 +284,11 @@ luacheck must all report, so a missing or broken list can't pass.
 
 Chat can't be copied, so the diagnostics are written to the saved variables:
 
-- `/bs debug` prints the combo point read, crit counters, energy bar state and
-  whether the two per-frame scripts are running or idle (`idle: splatters=…
-  bar=…`), the zone check (`zone:`) and the screen and splatter size
-  (`screen:`), and saves them under `debug`. It also re-runs the self-check
+- `/bs debug` prints the combo point read, crit counters, energy bar state
+  (including the Poised border read, `bar: poised=…`) and whether the two
+  per-frame scripts are running or idle (`idle: splatters=… bar=…`), the zone
+  check (`zone:`) and the screen and splatter size (`screen:`), and saves them
+  under `debug`. It also re-runs the self-check
   (lines starting `check `) and switches parts off or back on to match.
 - The **self-check** runs at every login and saves its result under
   `selfcheck`: `build` (game version and build number from `GetBuildInfo()`,

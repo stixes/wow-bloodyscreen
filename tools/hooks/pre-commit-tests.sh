@@ -10,7 +10,7 @@ grep -qE '(^|[;&|[:space:]])git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:spac
 
 cd "$root" || exit 0
 fail() { echo "Commit blocked: $1" >&2; echo "$2" | tail -n 40 >&2; exit 2; }
-for f in BloodyScreenForever/*.lua; do
+for f in BloodyScreenForever/*.lua tests/*.lua; do
     out=$(luajit -bl "$f" 2>&1 >/dev/null) || fail "syntax error in $f" "$out"
 done
 if command -v luacheck >/dev/null; then

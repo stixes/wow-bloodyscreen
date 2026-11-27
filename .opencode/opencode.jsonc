@@ -1,0 +1,7 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  // CONTRIBUTING.md is the working guide. OpenCode reads CLAUDE.md here as its
+  // instruction file, but does not expand its `@CONTRIBUTING.md` import, so the
+  // file is named explicitly.
+  "instructions": ["CONTRIBUTING.md"]
+}
